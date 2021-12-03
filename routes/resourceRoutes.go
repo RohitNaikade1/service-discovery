@@ -25,39 +25,34 @@ func (r routes) AddAzureService(rg *gin.RouterGroup) {
 
 func (r routes) AzureController(rg *gin.RouterGroup) {
 	azres := rg.Group("/")
-	azres.GET(":name", func(c *gin.Context) {
-		//auth.ValidateToken(c)
+	azres.GET(":name", controllers.Authenticate, func(c *gin.Context) {
 		name := c.Param("name")
-		//c.Header("Token")
-		//azure.ResourceResponse(name, c)
 		switch name {
 
 		case "virtualmachines":
 			controllers.GetResponce(c, controllers.GetVM)
-		/*case "resourcegroups":
-			azure.GetResourceGroupsResponse(c)
+		case "resourcegroups":
+			controllers.GetResponce(c, controllers.GetResourceGroups)
 		case "networkinterfaces":
-			azure.GetNetworkInterfacesResponse(c)
+			controllers.GetResponce(c, controllers.GetNetworkInterfaces)
 		case "virtualnetworks":
-			azure.GetVirtualNetworksResponse(c)
+			controllers.GetResponce(c, controllers.GetVirtualNetworks)
 		case "networksecuritygroups":
-			azure.GetNetworkSecurityGroupsResponse(c)
+			controllers.GetResponce(c, controllers.GetNetworkSecurityGroups)
 		case "storageaccounts":
-			azure.GetStorageAccountResponse(c)
+			controllers.GetResponce(c, controllers.GetStorageAccount)
 		case "disks":
-			azure.GetDiskResponse(c)
+			controllers.GetResponce(c, controllers.GetDisk)
 		case "publicipaddresses":
-			azure.GetPublicIPAddressesResponse(c)
+			controllers.GetResponce(c, controllers.GetPublicIPAddresses)
 		case "sqlservers":
-			azure.GetSQLServersResponse(c)
+			controllers.GetResponce(c, controllers.GetSQLServers)
 		case "sqldatabases":
-			azure.GetDatabasesResponse(c)
+			controllers.GetResponce(c, controllers.GetDatabase)
 		case "loadbalancers":
-			azure.GetLoadBalancersResponse(c)
+			controllers.GetResponce(c, controllers.GetLoadBalancers)
 		case "subnets":
-			azure.GetSubnetsResponse(c)
-		case "all":
-			azure.GetAllResponse(c)*/
+			controllers.GetResponce(c, controllers.GetSubnets)
 		default:
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid resource namespace or resource type"})
 		}

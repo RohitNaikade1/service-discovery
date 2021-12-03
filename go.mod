@@ -5,7 +5,10 @@ go 1.17
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.12.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute v0.2.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork v0.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v0.2.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v0.2.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v0.2.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/spf13/viper v1.9.0

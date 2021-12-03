@@ -57,8 +57,14 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.2 h1:rImM7Yjz9yUgpdxp3A4cZLm
 github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.2/go.mod h1:KLF4gFr6DcKFZwSuH8w8yEK6DpFl3LP5rhdvAb7Yz5I=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute v0.2.0 h1:BHTEy92f31e5CRnjn35IjRCQagwmPzfpomInzX1m7Jw=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute v0.2.0/go.mod h1:gqSH+t+W3CJGVmabhRgUav5l9jBv5VkMmpmboVtYqoI=
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork v0.2.0 h1:CyjRCNWYbJ5auOsvNvqikFagdigTjEO3TP7+OZc20fk=
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork v0.2.0/go.mod h1:4h3E+JM3CxvgkL6OSJ0ac60aC1OH7nDVozji5bkyhJw=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v0.2.0 h1:SdyLrG1OreJ3X8CoPgQnKU847+61sJ9TVfvtrdjX6rI=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v0.2.0/go.mod h1:aSuRFfpDntiZkIh+XmoL9EV4FS4ViptLBwFRytECG/8=
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v0.2.0 h1:D9rG2Ap9SnSBfCVysFU5R0VWaQxxiPLA15lkXMt+PtU=
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v0.2.0/go.mod h1:2wTloWutgWFh3mcaMWzmuxMw6QXKg9FCDNx+EEgyAlQ=
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v0.2.0 h1:CGIYpRDCMotOj1a/1OZOPAwKq0xFKV+/8lHo9GB6Lw4=
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v0.2.0/go.mod h1:6OekxBFJ2ICBhqajYGgX4dY58H9x3J5FXikPo43nKYI=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
