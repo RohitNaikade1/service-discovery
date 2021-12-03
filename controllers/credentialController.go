@@ -17,6 +17,8 @@ import (
 )
 
 func GetAllCredentials(c *gin.Context) {
+	username := c.GetString("username")
+	password := c.GetString("password")
 	role := c.GetString("role")
 	var arr []string
 	result := database.GetAllDocuments(database.Database(), database.CredentialCollectionName())
@@ -28,7 +30,7 @@ func GetAllCredentials(c *gin.Context) {
 		arr = append(arr, string(out))
 	}
 	stringByte := "[" + strings.Join(arr, " ,") + "]"
-	if helpers.ValidateRole(role) {
+	if helpers.VerifyAdmin(role, username, password) {
 		c.Data(http.StatusOK, "application/json", []byte(stringByte))
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -68,7 +70,7 @@ func CreateCredentials(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
 	} else {
 		collection := database.CredentialCollection()
-		if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
+		if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
 			result, err := collection.InsertOne(context.Background(), cred)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

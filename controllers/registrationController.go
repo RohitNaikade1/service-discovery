@@ -52,7 +52,7 @@ func GetRegistration(c *gin.Context) {
 
 	if database.ValidateCollection(database.Database(), database.RegistrationCollectionName()) {
 		if database.ValidateDocument(database.Database(), database.RegistrationCollectionName(), bson.M{"_id": registration.ID}) {
-			if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
+			if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
 				c.JSON(http.StatusOK, registration)
 			} else {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -66,6 +66,8 @@ func GetRegistration(c *gin.Context) {
 }
 
 func GetRegistrations(c *gin.Context) {
+	username := c.GetString("username")
+	password := c.GetString("password")
 	role := c.GetString("role")
 	var arr []string
 	result := database.GetAllDocuments(database.Database(), database.RegistrationCollectionName())
@@ -77,7 +79,7 @@ func GetRegistrations(c *gin.Context) {
 		arr = append(arr, string(out))
 	}
 	stringByte := "[" + strings.Join(arr, " ,") + "]"
-	if helpers.ValidateRole(role) {
+	if helpers.VerifyAdmin(role, username, password) {
 		c.Data(http.StatusOK, "application/json", []byte(stringByte))
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -104,7 +106,7 @@ func CreateRegistration(c *gin.Context) {
 	fmt.Println(registration.Name, " ", registration.Accounts.CredsId)
 
 	user := helpers.GetUserByCredsID(registration.Accounts.CredsId)
-	if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
+	if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
 		if database.ValidateDocument(database.Database(), database.RegistrationCollectionName(), bson.M{"credsid": registration.Accounts.CredsId, "name": registration.Name}) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "credsid or name used already"})
 		} else {
@@ -142,7 +144,7 @@ func UpdateRegistration(c *gin.Context) {
 
 	collection := database.RegistrationCollection()
 
-	if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
+	if helpers.ValidateUser(username, password, role, user) {
 		response, err := collection.UpdateOne(context.Background(), filter, update)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -164,7 +166,7 @@ func DeleteRegistration(c *gin.Context) {
 	user := helpers.GetUserByCredsID(id)
 
 	collection := database.RegistrationCollection()
-	if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
+	if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
 		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": id})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

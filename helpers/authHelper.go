@@ -57,3 +57,27 @@ func GetUserByCredsID(credsid string) (user models.User) {
 	user = GetUser(userId)
 	return user
 }
+
+func VerifyAdmin(role string, username string, password string) (result bool) {
+	var user models.User
+	collection := database.UserCollection()
+	collection.FindOne(context.Background(), bson.M{"username": username}).Decode(&user)
+	if username == user.UserName && password == user.Password && role == "admin" && user.Role == "admin" {
+		result = true
+	} else {
+		result = false
+	}
+	return result
+}
+
+func VerifyUser(role string, username string, password string) (result bool) {
+	var user models.User
+	collection := database.UserCollection()
+	collection.FindOne(context.Background(), bson.M{"username": username}).Decode(&user)
+	if username == user.UserName && password == user.Password && user.Role == role {
+		result = true
+	} else {
+		result = false
+	}
+	return result
+}

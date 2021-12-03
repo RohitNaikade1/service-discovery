@@ -95,6 +95,8 @@ func Login(c *gin.Context) {
 }
 
 func GetUsers(c *gin.Context) {
+	username := c.GetString("username")
+	password := c.GetString("password")
 	role := c.GetString("role")
 
 	var arr []string
@@ -111,13 +113,13 @@ func GetUsers(c *gin.Context) {
 		}
 
 		stringByte := "[" + strings.Join(arr, " ,") + "]"
+		user := GetCurrentLoggedInUser(username, password, role)
 
-		if helpers.ValidateRole(role) {
+		if user.Role == "admin" {
 			c.Data(http.StatusOK, "application/json", []byte(stringByte))
 		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Only admins can access this data"})
+			c.JSON(http.StatusUnauthorized, "Unauthorized")
 		}
-
 	} else {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Data not found"})
 	}
@@ -137,15 +139,19 @@ func GetUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	if helpers.ValidateRole(role) {
+	appUser := GetCurrentLoggedInUser(username, password, role)
+
+	if appUser.Role == "admin" || appUser.ID == id {
 		c.JSON(http.StatusOK, user)
 	} else {
-		if helpers.ValidateUser(username, password, role, user) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized to access this user details."})
+	}
+	/*
+		if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
 			c.JSON(http.StatusOK, user)
 		} else {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized to access this user details."})
-		}
-	}
+		}*/
 }
 
 func UpdateUser(c *gin.Context) {
@@ -168,15 +174,15 @@ func UpdateUser(c *gin.Context) {
 	}
 	user.Password = hashPassword
 
-	update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "username": user.UserName, "password": user.Password, "email": user.Email, "updated_at": time.Now().Local().String()}}
 	filter := bson.M{"_id": user.ID}
-	fmt.Println(user.ID)
-	user = helpers.GetUser(user.ID)
+
+	appUser := GetCurrentLoggedInUser(username, password, role)
 
 	fmt.Println("username: ", user.UserName, "password: ", user.Password, "role: ", user.Role)
 
 	collection := database.UserCollection()
-	if helpers.ValidateRole(role) {
+	if appUser.Role == "admin" {
+		update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "username": user.UserName, "password": user.Password, "email": user.Email, "updated_at": time.Now().Local().String()}}
 		response, err := collection.UpdateOne(context.Background(), filter, update)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -184,7 +190,8 @@ func UpdateUser(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": user})
 	} else {
-		if helpers.ValidateUser(username, password, role, user) {
+		if appUser.ID == user.ID {
+			update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "username": user.UserName, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
 			response, err := collection.UpdateOne(context.Background(), filter, update)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -200,10 +207,12 @@ func UpdateUser(c *gin.Context) {
 
 func DeleteUser(c *gin.Context) {
 	role := c.GetString("role")
-
+	username := c.GetString("username")
+	password := c.GetString("password")
 	id := c.Param("id")
 
-	if helpers.ValidateRole(role) {
+	appUser := GetCurrentLoggedInUser(username, password, role)
+	if appUser.Role == "admin" {
 		collection := database.UserCollection()
 		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": id})
 		if err != nil {

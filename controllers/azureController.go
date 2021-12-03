@@ -20,11 +20,7 @@ import (
 
 	//"github.com/Azure/azure-sdk-for-go/sdk/network/armnetwork"
 	//"github.com/Azure/azure-sdk-for-go/sdk/sql/armsql"
-	//"github.com/Azure/azure-sdk-for-go/sdk/network/armnetwork"
-	//"github.com/Azure/azure-sdk-for-go/sdk/sql/armsql"
 	"github.com/gin-gonic/gin"
-
-	//"github.com/Azure/azure-sdk-for-go/sdk/resources/armresources"
 
 	//"github.com/Azure/azure-sdk-for-go/sdk/compute/armcompute"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
@@ -754,7 +750,7 @@ func GetResponce(c *gin.Context, fn func(id string) string) {
 
 	user := helpers.GetUserByCredsID(credsid)
 
-	if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
+	if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
 		id := helpers.SubscriptionID(credsid)
 		fmt.Println("sid:", id)
 		c.Data(http.StatusOK, "application/json", []byte(fn(id)))
