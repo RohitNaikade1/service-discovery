@@ -20,6 +20,7 @@ func GetAllCredentials(c *gin.Context) {
 	username := c.GetString("username")
 	password := c.GetString("password")
 	role := c.GetString("role")
+
 	var arr []string
 	result := database.GetAllDocuments(database.Database(), database.CredentialCollectionName())
 	for _, creds := range result {
@@ -30,7 +31,11 @@ func GetAllCredentials(c *gin.Context) {
 		arr = append(arr, string(out))
 	}
 	stringByte := "[" + strings.Join(arr, " ,") + "]"
-	if helpers.VerifyAdmin(role, username, password) {
+
+	sysAdmin := VerifyParentAdmin(username, password, role)
+	appUser := GetCurrentLoggedInUser(username, password, role)
+
+	if sysAdmin || appUser.Role == "admin" {
 		c.Data(http.StatusOK, "application/json", []byte(stringByte))
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -41,6 +46,10 @@ func CreateCredentials(c *gin.Context) {
 	username := c.GetString("username")
 	password := c.GetString("password")
 	role := c.GetString("role")
+
+	sysAdmin := VerifyParentAdmin(username, password, role)
+	appUser := GetCurrentLoggedInUser(username, password, role)
+
 	var cred models.Credentials
 
 	cred.ID = primitive.NewObjectID().Hex()
@@ -56,7 +65,7 @@ func CreateCredentials(c *gin.Context) {
 	cred.Created_At = dt.String()
 	cred.Updated_At = time.Now().Local().String()
 
-	user := helpers.GetUser(cred.User.ID)
+	//user := helpers.GetUser(cred.User.ID)
 
 	if cred.UserName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
@@ -70,7 +79,7 @@ func CreateCredentials(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
 	} else {
 		collection := database.CredentialCollection()
-		if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
+		if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 			result, err := collection.InsertOne(context.Background(), cred)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -88,6 +97,9 @@ func GetCredential(c *gin.Context) {
 	password := c.GetString("password")
 	role := c.GetString("role")
 
+	sysAdmin := VerifyParentAdmin(username, password, role)
+	appUser := GetCurrentLoggedInUser(username, password, role)
+
 	var cred models.Credentials
 
 	cred.CredsID = c.Param("credsid")
@@ -100,10 +112,7 @@ func GetCredential(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			}
 
-			user := helpers.GetUser(cred.User.ID)
-			fmt.Println(user.First_Name)
-
-			if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
+			if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 				c.JSON(http.StatusOK, cred)
 			} else {
 				c.JSON(http.StatusUnauthorized, gin.H{"status": "Unauthorized"})
@@ -122,9 +131,15 @@ func UpdateCredentials(c *gin.Context) {
 	password := c.GetString("password")
 	role := c.GetString("role")
 
+	sysAdmin := VerifyParentAdmin(username, password, role)
+	appUser := GetCurrentLoggedInUser(username, password, role)
+
 	var cred models.Credentials
 
 	cred.CredsID = c.Param("credsid")
+	id := cred.CredsID
+
+	credentials := helpers.FindByCredsID(id)
 
 	if database.ValidateCollection(database.Database(), database.CredentialCollectionName()) {
 		if database.ValidateDocument(database.Database(), database.CredentialCollectionName(), bson.M{"credsid": cred.CredsID}) {
@@ -132,14 +147,15 @@ func UpdateCredentials(c *gin.Context) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			fmt.Println(cred)
-			user := helpers.GetUser(cred.User.ID)
+
+			user := helpers.GetUser(credentials.User.ID)
+
 			filter := bson.M{"credsid": cred.CredsID}
 			update := bson.M{"$set": bson.M{"provider": cred.Provider, "subscriptionid": cred.SubscriptionID, "tenantid": cred.TenantID, "username": cred.UserName, "updated_at": time.Now().Local().String()}}
 
 			collection := database.CredentialCollection()
 
-			if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
+			if sysAdmin || appUser.Role == "admin" || appUser.ID == user.ID {
 				response, err := collection.UpdateOne(context.Background(), filter, update)
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -163,13 +179,21 @@ func DeleteCredentials(c *gin.Context) {
 	username := c.GetString("username")
 	password := c.GetString("password")
 
-	id := c.Param("id")
+	sysAdmin := VerifyParentAdmin(username, password, role)
+	appUser := GetCurrentLoggedInUser(username, password, role)
 
-	user := helpers.GetUser(id)
+	var cred models.Credentials
+
+	cred.ID = c.Param("credsid")
+
+	credential := helpers.FindByCredsID(cred.ID)
+
+	user := helpers.GetUser(credential.User.ID)
 
 	collection := database.CredentialCollection()
-	if helpers.ValidateRole(role) || helpers.ValidateUser(username, password, role, user) {
-		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": id})
+
+	if sysAdmin || appUser.Role == "admin" || appUser.ID == user.ID {
+		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": cred.ID})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			c.Abort()

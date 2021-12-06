@@ -746,11 +746,15 @@ func GetResponce(c *gin.Context, fn func(id string) string) {
 	role := c.GetString("role")
 	username := c.GetString("username")
 	password := c.GetString("password")
+
+	sysAdmin := VerifyParentAdmin(username, password, role)
+	appUser := GetCurrentLoggedInUser(username, password, role)
+
 	credsid := c.Query("credsid")
 
-	user := helpers.GetUserByCredsID(credsid)
+	//user := helpers.GetUserByCredsID(credsid)
 
-	if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
+	if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 		id := helpers.SubscriptionID(credsid)
 		fmt.Println("sid:", id)
 		c.Data(http.StatusOK, "application/json", []byte(fn(id)))

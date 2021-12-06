@@ -30,3 +30,12 @@ func SubscriptionID(credsid string) (subid string) {
 	subid = cred.SubscriptionID
 	return subid
 }
+
+func FindByCredsID(credsid string) (cred models.Credentials) {
+	collection := database.CredentialCollection()
+	err := collection.FindOne(context.Background(), bson.M{"credsid": credsid}).Decode(&cred)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return cred
+}

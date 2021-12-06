@@ -19,38 +19,50 @@ import (
 )
 
 func SignUp(c *gin.Context) {
-	var user models.User
+	username := c.GetString("username")
+	userPassword := c.GetString("password")
+	role := c.GetString("role")
 
-	user.ID = primitive.NewObjectID().Hex()
+	sysAdmin := VerifyParentAdmin(username, userPassword, role)
+	appUser := GetCurrentLoggedInUser(username, userPassword, role)
 
-	err := c.BindJSON(&user)
-	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Invalid json provided"})
-	}
+	if sysAdmin || appUser.Role == "admin" {
+		var user models.User
 
-	password := user.Password
+		user.ID = primitive.NewObjectID().Hex()
 
-	hashPassword, err := helpers.HashPassword(password)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	}
+		err := c.BindJSON(&user)
+		if err != nil {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Invalid json provided"})
+		}
 
-	user.Password = hashPassword
-	user.Created_At = time.Now().Local().String()
-	user.Updated_At = time.Now().Local().String()
+		password := user.Password
 
-	collection := database.UserCollection()
-
-	if database.ValidateDocument(database.Database(), database.UserCollectionName(), bson.M{"email": user.Email, "username": user.UserName}) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "username or email already exists"})
-	} else {
-		result, err := collection.InsertOne(context.Background(), user)
+		hashPassword, err := helpers.HashPassword(password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		} else {
-			c.JSON(http.StatusOK, gin.H{"status": "inserted", "id": result.InsertedID})
 		}
+
+		user.Password = hashPassword
+		user.Created_At = time.Now().Local().String()
+		user.Updated_At = time.Now().Local().String()
+
+		collection := database.UserCollection()
+
+		if database.ValidateDocument(database.Database(), database.UserCollectionName(), bson.M{"email": user.Email, "username": user.UserName}) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "username or email already exists"})
+		} else {
+			result, err := collection.InsertOne(context.Background(), user)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"status": "inserted", "id": result.InsertedID})
+			}
+		}
+	} else {
+		c.JSON(http.StatusUnauthorized, "Not authorized to add users")
 	}
+
 }
 
 func Login(c *gin.Context) {
@@ -113,9 +125,11 @@ func GetUsers(c *gin.Context) {
 		}
 
 		stringByte := "[" + strings.Join(arr, " ,") + "]"
-		user := GetCurrentLoggedInUser(username, password, role)
 
-		if user.Role == "admin" {
+		sysAdmin := VerifyParentAdmin(username, password, role)
+		appUser := GetCurrentLoggedInUser(username, password, role)
+
+		if sysAdmin || appUser.Role == "admin" {
 			c.Data(http.StatusOK, "application/json", []byte(stringByte))
 		} else {
 			c.JSON(http.StatusUnauthorized, "Unauthorized")
@@ -139,19 +153,14 @@ func GetUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
+	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 
-	if appUser.Role == "admin" || appUser.ID == id {
+	if sysAdmin || appUser.Role == "admin" || appUser.ID == id {
 		c.JSON(http.StatusOK, user)
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized to access this user details."})
 	}
-	/*
-		if helpers.VerifyAdmin(role, username, password) || helpers.ValidateUser(username, password, role, user) {
-			c.JSON(http.StatusOK, user)
-		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized to access this user details."})
-		}*/
 }
 
 func UpdateUser(c *gin.Context) {
@@ -176,13 +185,14 @@ func UpdateUser(c *gin.Context) {
 
 	filter := bson.M{"_id": user.ID}
 
+	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 
 	fmt.Println("username: ", user.UserName, "password: ", user.Password, "role: ", user.Role)
 
 	collection := database.UserCollection()
-	if appUser.Role == "admin" {
-		update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "username": user.UserName, "password": user.Password, "email": user.Email, "updated_at": time.Now().Local().String()}}
+	if sysAdmin || appUser.Role == "admin" {
+		update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
 		response, err := collection.UpdateOne(context.Background(), filter, update)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -191,7 +201,7 @@ func UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": user})
 	} else {
 		if appUser.ID == user.ID {
-			update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "username": user.UserName, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
+			update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "password": user.Password, "email": user.Email, "updated_at": time.Now().Local().String()}}
 			response, err := collection.UpdateOne(context.Background(), filter, update)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -201,7 +211,6 @@ func UpdateUser(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized to update user details."})
 		}
-
 	}
 }
 
@@ -211,8 +220,10 @@ func DeleteUser(c *gin.Context) {
 	password := c.GetString("password")
 	id := c.Param("id")
 
+	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-	if appUser.Role == "admin" {
+
+	if sysAdmin || appUser.Role == "admin" {
 		collection := database.UserCollection()
 		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": id})
 		if err != nil {
