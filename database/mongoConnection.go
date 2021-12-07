@@ -126,3 +126,16 @@ func UpdateToMongo(data interface{}, db string, c string, filter primitive.M) (r
 	fmt.Println("Finished saving data.")
 	return r, err
 }
+
+func ListCollectionNames(db string) []string {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
+	defer cancel()
+	destination := Client.Database(db)
+	filter := bson.D{{}}
+	cursor, err := destination.ListCollectionNames(ctx, filter)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return cursor
+}

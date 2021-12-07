@@ -18,6 +18,7 @@ func NewRoutes() routes {
 	r.AddRegistrationRoutes(servicediscovery)
 	r.AddCredentialsRoutes(servicediscovery)
 	r.AddUserRoutes(servicediscovery)
+	r.AddCronJobRoutes(servicediscovery)
 	return r
 }
 

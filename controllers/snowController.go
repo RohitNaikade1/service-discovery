@@ -55,3 +55,35 @@ func PostApi(body string) (sysid string) {
 
 	return s.Result.SysID
 }
+
+func DeActive(data string) {
+	//fmt.Println(data)
+	//body := fmt.Sprint(data)
+	payload := strings.NewReader(data)
+	url := "https://dev55842.service-now.com/api/631287/pocapi/deactive"
+	method := "POST"
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, payload)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	req.Header.Add("Authorization", "Basic YWRtaW46OHRsVE5wTlNzTTFy")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer res.Body.Close()
+
+	responseBody, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(responseBody))
+	fmt.Println(res.Status)
+}

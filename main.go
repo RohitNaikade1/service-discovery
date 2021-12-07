@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"service-discovery/controllers"
 	"service-discovery/database"
 	"service-discovery/env"
 	"service-discovery/models"
@@ -17,8 +17,7 @@ func main() {
 		DBURL: url,
 	})
 
-	fmt.Println(port, " ", url)
-	//cronjob.ExecuteCronJob()
+	controllers.ExecuteCronJob()
 
 	routes.NewRoutes()
 	routes.NewRoutes().Run("localhost:" + port)

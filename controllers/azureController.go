@@ -743,6 +743,15 @@ func GetSQLServers(subid string) string {
 
 func GetResponce(c *gin.Context, fn func(id string) string) {
 
+	credsid := c.Query("credsid")
+
+	id := helpers.SubscriptionID(credsid)
+	fmt.Println("sid:", id)
+	c.Data(http.StatusOK, "application/json", []byte(fn(id)))
+
+}
+
+func GetResourceResponce(c *gin.Context, fn func(id string) string) {
 	role := c.GetString("role")
 	username := c.GetString("username")
 	password := c.GetString("password")
