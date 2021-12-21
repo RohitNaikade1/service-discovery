@@ -14,7 +14,6 @@ func NewRoutes() routes {
 	servicediscovery := r.router.Group("/servicediscovery")
 
 	r.AddCloudResources(servicediscovery)
-	//r.AddCronJob(servicediscovery)
 	r.AddRegistrationRoutes(servicediscovery)
 	r.AddCredentialsRoutes(servicediscovery)
 	r.AddUserRoutes(servicediscovery)

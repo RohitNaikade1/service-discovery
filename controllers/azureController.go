@@ -79,8 +79,20 @@ func GetVM(subid string) string {
 					json.Unmarshal(out, &data)
 					p := AddSysID(data, sysid)
 
-					filter := bson.M{"id": *result.ID}
-					database.UpdateToMongo(p, database.Database(), "virtualmachines", filter)
+					data := p
+					res, err := json.Marshal(data)
+					if err != nil {
+						fmt.Println(err)
+					}
+
+					response := GetDataFromDatabase("virtualmachines", *result.ID, res)
+					fmt.Println(response)
+
+					if !response {
+						filter := bson.M{"id": *result.ID}
+						database.UpdateToMongo(p, database.Database(), "virtualmachines", filter)
+						fmt.Println("stored")
+					}
 
 					r, err := json.Marshal(p)
 					if err != nil {

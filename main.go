@@ -18,8 +18,9 @@ func main() {
 	})
 
 	controllers.ExecuteCronJob()
-
+	//controllers.FetchDataFromDatabase()
 	routes.NewRoutes()
 	routes.NewRoutes().Run("localhost:" + port)
 	database.DisconnectMongoDB()
+
 }
