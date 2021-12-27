@@ -1,0 +1,19 @@
+{
+    "resources":[
+        "resourcegroups",
+        "virtualmachines",
+        "virtualnetworks",
+        "networkinterfaces",
+        "networksecuritygroups",
+        "disks",
+        "storageaccounts",
+        "publicipaddresses",
+        "databases",
+        "servers",
+        "subnets",
+        "networkwatchers",
+        "sshpublickeys",
+        "vaults",
+        "loadbalancers"
+    ]
+}

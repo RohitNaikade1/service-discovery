@@ -12,7 +12,6 @@ import (
 	"time"
 
 	//"github.com/Azure/azure-sdk-for-go/sdk/arm"
-
 	//"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql"
@@ -33,15 +32,18 @@ import (
 
 var data map[string]interface{}
 
-func GetVM(subid string) string {
-	var s []string
-
+func GetDefaultCred() (cred *azidentity.DefaultAzureCredential) {
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		log.Fatalf("failed to obtain a credential: %v", err)
 	}
+	return cred
+}
 
-	rg_client := armresources.NewResourceGroupsClient(subid, cred, nil)
+func GetVM(subid string) string {
+	var s []string
+
+	rg_client := armresources.NewResourceGroupsClient(subid, GetDefaultCred(), nil)
 	pager := rg_client.List(nil)
 	for pager.NextPage(context.Background()) {
 		resp := pager.PageResponse()
@@ -51,7 +53,7 @@ func GetVM(subid string) string {
 
 		for _, val1 := range resp.ResourceGroupsListResult.Value {
 			log.Println("Rg name: ", *val1.Name)
-			vm_client := armcompute.NewVirtualMachinesClient(subid, cred, nil)
+			vm_client := armcompute.NewVirtualMachinesClient(subid, GetDefaultCred(), nil)
 			pager := vm_client.List(*val1.Name, nil)
 			for pager.NextPage(context.Background()) {
 				resp := pager.PageResponse()
@@ -116,12 +118,8 @@ func GetVM(subid string) string {
 
 func GetStorageAccount(subid string) string {
 	var s []string
-	cred, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		log.Fatalf("failed to obtain a credential: %v", err)
-	}
 
-	rg_client := armresources.NewResourceGroupsClient(subid, cred, nil)
+	rg_client := armresources.NewResourceGroupsClient(subid, GetDefaultCred(), nil)
 	pager := rg_client.List(nil)
 	for pager.NextPage(context.Background()) {
 		resp := pager.PageResponse()
@@ -131,7 +129,7 @@ func GetStorageAccount(subid string) string {
 
 		for _, val1 := range resp.ResourceGroupsListResult.Value {
 			log.Println("Rg name: ", *val1.Name)
-			sa_client := armstorage.NewStorageAccountsClient(subid, cred, nil)
+			sa_client := armstorage.NewStorageAccountsClient(subid, GetDefaultCred(), nil)
 			pager := sa_client.ListByResourceGroup(*val1.Name, nil)
 			for pager.NextPage(context.Background()) {
 				resp := pager.PageResponse()

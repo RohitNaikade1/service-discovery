@@ -21,6 +21,62 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+/*
+var wg = sync.WaitGroup{}
+
+func CronTask(credsid string) {
+	fmt.Println("Hi")
+	var r models.Registration
+
+	fmt.Println(credsid)
+
+	col := database.RegistrationCollection()
+	err := col.FindOne(context.TODO(), bson.M{"accounts.credsid": credsid}).Decode(&r)
+
+	fmt.Println(len(r.Categories))
+	wg.Add(len(r.Categories))
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		for i := 0; i < len(r.Categories); i++ {
+
+			for j := 0; j < len(r.Categories[i].Resource_info.Resources); j++ {
+				resource := r.Categories[i].Resource_info.Resources[j]
+				go GetResourceData(resource, credsid)
+			}
+		}
+
+	}
+	wg.Wait()
+
+}
+
+func GetResourceData(resource string, credsid string) {
+	port := env.GetEnvironmentVariable("PORT")
+	url := "http://localhost:" + port + "/servicediscovery/cloudresources/azure/service/" + resource + "?credsid=" + credsid
+	method := "GET"
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(body))
+	time.Sleep(time.Duration(10 * time.Millisecond))
+	wg.Done()
+
+}*/
+
 func CronTask(credsid string) {
 
 	var r models.Registration
@@ -343,6 +399,8 @@ func Collections(creds string) {
 }
 
 func SyncResources(collection string, creds string) {
+	var Resp armresources.ResourcesGetByIDResponse
+	var Err error
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		log.Fatalf("failed to obtain a credential: %v", err)
@@ -350,62 +408,72 @@ func SyncResources(collection string, creds string) {
 	client := armresources.NewResourcesClient(helpers.SubscriptionID(creds), cred, nil)
 	results := database.GetAllDocuments(db, collection)
 	fmt.Println(collection + " Query Reult:")
-	if collection == database.UserCollectionName() || collection == database.CredentialCollectionName() || collection == database.RegistrationCollectionName() {
-		fmt.Println("not a resource")
-	} else {
-		for _, doc := range results {
-			//fmt.Println(doc)
-			name := doc["name"]
-			n := fmt.Sprint(name)
-			id := doc["id"]
-			status := doc["status"]
-			ID := fmt.Sprint(id)
-			//fmt.Println("ID: ", ID)
+	//if collection == database.UserCollectionName() || collection == database.CredentialCollectionName() || collection == database.RegistrationCollectionName() {
+	//	fmt.Println("not a resource")
+	//} else {
+	for _, doc := range results {
+		//fmt.Println(doc)
+		name := doc["name"]
+		n := fmt.Sprint(name)
+		id := doc["id"]
+		status := doc["status"]
+		ID := fmt.Sprint(id)
+		//fmt.Println("ID: ", ID)
 
-			if status == "active" {
+		if status == "active" {
+			fmt.Println("Inside active")
+			if collection == "databases" || collection == "servers" {
+				resp, err := client.GetByID(context.Background(), ID, "2021-08-01-preview", nil)
+				Resp = resp
+				Err = err
+			} else {
 				resp, err := client.GetByID(context.Background(), ID, "2021-04-01", nil)
-				if err != nil {
-					fmt.Println("failed to obtain a response: ", err)
-
-					var res []byte
-					var er error
-					if collection == "virtualmachines" {
-						properties := doc["properties"]
-						ostype := GetOSType(properties)
-						r := models.VirtualMachine{Name: n, Type: collection, OsType: ostype}
-						res, er = json.Marshal(r)
-						if er != nil {
-							fmt.Println(er)
-						}
-					} else {
-						r := models.Resource{Name: n, Type: collection}
-						res, er = json.Marshal(r)
-						if er != nil {
-							fmt.Println(er)
-						}
-					}
-
-					DeActive(string(res))
-					filter := bson.M{"name": n}
-					data := bson.M{"status": "inactive"}
-					update := bson.M{"$set": data}
-					database.UpdateOne(db, collection, filter, update)
-
-				}
-
-				out, e := json.Marshal(resp)
-				if e != nil {
-					fmt.Println(err)
-				}
-
-				var d map[string]interface{}
-				json.Unmarshal(out, &d)
-				filter := bson.M{"name": n}
-				update := bson.M{"$set": d}
-				database.UpdateOne(db, collection, filter, update)
+				Resp = resp
+				Err = err
 			}
 
+			if Err != nil {
+				fmt.Println("failed to obtain a response: ", err)
+
+				var res []byte
+				var er error
+				if collection == "virtualmachines" {
+					properties := doc["properties"]
+					ostype := GetOSType(properties)
+					r := models.VirtualMachine{Name: n, Type: collection, OsType: ostype}
+					res, er = json.Marshal(r)
+					if er != nil {
+						fmt.Println(er)
+					}
+				} else {
+					r := models.Resource{Name: n, Type: collection}
+					res, er = json.Marshal(r)
+					if er != nil {
+						fmt.Println(er)
+					}
+				}
+
+				DeActive(string(res))
+				filter := bson.M{"name": n}
+				data := bson.M{"status": "inactive"}
+				update := bson.M{"$set": data}
+				database.UpdateOne(db, collection, filter, update)
+
+			}
+
+			out, e := json.Marshal(Resp)
+			if e != nil {
+				fmt.Println(err)
+			}
+
+			var d map[string]interface{}
+			json.Unmarshal(out, &d)
+			filter := bson.M{"name": n}
+			update := bson.M{"$set": d}
+			database.UpdateOne(db, collection, filter, update)
 		}
+
 	}
+	//}
 
 }
