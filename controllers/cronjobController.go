@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"os"
 	"service-discovery/database"
+	"service-discovery/env"
 	"service-discovery/helpers"
 	"service-discovery/models"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -21,10 +23,20 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-/*
-var wg = sync.WaitGroup{}
+func GetResourcesCount(Categories []models.Category_info) (count int) {
+	count = 0
+	for i := 0; i < len(Categories); i++ {
+
+		for j := 0; j < len(Categories[i].Resource_info.Resources); j++ {
+			count++
+		}
+	}
+	return count
+}
 
 func CronTask(credsid string) {
+	start := time.Now()
+	var wg = sync.WaitGroup{}
 	fmt.Println("Hi")
 	var r models.Registration
 
@@ -32,9 +44,9 @@ func CronTask(credsid string) {
 
 	col := database.RegistrationCollection()
 	err := col.FindOne(context.TODO(), bson.M{"accounts.credsid": credsid}).Decode(&r)
-
-	fmt.Println(len(r.Categories))
-	wg.Add(len(r.Categories))
+	count := GetResourcesCount(r.Categories)
+	fmt.Println("Count: ", count)
+	wg.Add(count)
 	if err != nil {
 		fmt.Println(err.Error())
 	} else {
@@ -42,16 +54,18 @@ func CronTask(credsid string) {
 
 			for j := 0; j < len(r.Categories[i].Resource_info.Resources); j++ {
 				resource := r.Categories[i].Resource_info.Resources[j]
-				go GetResourceData(resource, credsid)
+				go GetResourceData(resource, credsid, &wg)
 			}
 		}
 
 	}
 	wg.Wait()
+	elapsed := time.Since(start)
+	log.Printf("Sync took %s", elapsed)
 
 }
 
-func GetResourceData(resource string, credsid string) {
+func GetResourceData(resource string, credsid string, wg *sync.WaitGroup) {
 	port := env.GetEnvironmentVariable("PORT")
 	url := "http://localhost:" + port + "/servicediscovery/cloudresources/azure/service/" + resource + "?credsid=" + credsid
 	method := "GET"
@@ -74,11 +88,11 @@ func GetResourceData(resource string, credsid string) {
 	fmt.Println(string(body))
 	time.Sleep(time.Duration(10 * time.Millisecond))
 	wg.Done()
+}
 
-}*/
-
+/*
 func CronTask(credsid string) {
-
+	start := time.Now()
 	var r models.Registration
 
 	fmt.Println(credsid)
@@ -122,7 +136,9 @@ func CronTask(credsid string) {
 
 		}
 	}
-}
+	elapsed := time.Since(start)
+	log.Printf("Sync took %s", elapsed)
+}*/
 
 type Set_DT struct {
 	ti string
@@ -228,6 +244,7 @@ func SetJob(c *gin.Context) {
 				j.Tag(tag)
 
 				fmt.Println("\nJob added, will run at:", t, "\nID:", tag)
+				c.JSON(http.StatusOK, bson.M{"Job added, it will run at": t, "ID": tag})
 				fmt.Println(s.Jobs())
 
 			} else if c.PostForm("Periodic_hr") != "" {
@@ -388,17 +405,25 @@ func GetOSType(data interface{}) string {
 }
 
 func Collections(creds string) {
+
+	start := time.Now()
+	var wg = sync.WaitGroup{}
 	fmt.Println("****************************************")
 	arr := database.ListCollectionNames(db)
 	//fmt.Println(len(arr))
+	wg.Add(len(arr))
 	for i := 0; i < len(arr); i++ {
 		fmt.Println("*******")
 		fmt.Println(arr[i])
-		SyncResources(arr[i], creds)
+		go SyncResources(arr[i], creds, &wg)
 	}
+
+	wg.Wait()
+	elapsed := time.Since(start)
+	log.Printf("Collections took %s", elapsed)
 }
 
-func SyncResources(collection string, creds string) {
+func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 	var Resp armresources.ResourcesGetByIDResponse
 	var Err error
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
@@ -475,5 +500,5 @@ func SyncResources(collection string, creds string) {
 
 	}
 	//}
-
+	wg.Done()
 }
