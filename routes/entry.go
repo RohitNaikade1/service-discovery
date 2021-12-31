@@ -1,6 +1,8 @@
 package routes
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+)
 
 type routes struct {
 	router *gin.Engine
@@ -10,6 +12,7 @@ func NewRoutes() routes {
 	r := routes{
 		router: gin.Default(),
 	}
+	r.router.Use(gin.Recovery())
 
 	servicediscovery := r.router.Group("/servicediscovery")
 

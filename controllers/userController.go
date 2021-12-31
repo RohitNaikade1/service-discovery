@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"service-discovery/database"
 	"service-discovery/helpers"
@@ -95,7 +94,7 @@ func Login(c *gin.Context) {
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 			tokenString, err := token.SignedString(jwtKey)
 			if err != nil {
-				fmt.Println(err)
+				Logger.Error(err.Error())
 			}
 			c.JSON(http.StatusOK, gin.H{"token": tokenString})
 		} else {
@@ -119,7 +118,7 @@ func GetUsers(c *gin.Context) {
 		for _, users := range results {
 			response, err := json.Marshal(users)
 			if err != nil {
-				fmt.Println(err)
+				Logger.Error(err.Error())
 			}
 			arr = append(arr, string(response))
 		}
@@ -188,7 +187,7 @@ func UpdateUser(c *gin.Context) {
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 
-	fmt.Println("username: ", user.UserName, "password: ", user.Password, "role: ", user.Role)
+	Logger.Info("username: " + user.UserName + "password: " + user.Password + "role: " + user.Role)
 
 	collection := database.UserCollection()
 	if sysAdmin || appUser.Role == "admin" {

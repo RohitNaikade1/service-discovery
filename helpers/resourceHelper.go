@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"service-discovery/models"
@@ -21,9 +20,10 @@ func Contains(arr []string, resourceType string) (result bool) {
 func ValidateResource(resourceType string) (result bool, arr []string) {
 	jsonFile, err := os.Open("resources.json")
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
-	fmt.Println("Successfully Opened users.json")
+
+	Logger.Info("Successfully Opened users.json")
 
 	defer jsonFile.Close()
 

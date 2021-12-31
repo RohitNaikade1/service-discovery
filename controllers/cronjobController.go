@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"service-discovery/database"
@@ -37,18 +36,21 @@ func GetResourcesCount(Categories []models.Category_info) (count int) {
 func CronTask(credsid string) {
 	start := time.Now()
 	var wg = sync.WaitGroup{}
-	fmt.Println("Hi")
+
 	var r models.Registration
 
-	fmt.Println(credsid)
+	//fmt.Println(credsid)
 
-	col := database.RegistrationCollection()
-	err := col.FindOne(context.TODO(), bson.M{"accounts.credsid": credsid}).Decode(&r)
+	collection := database.RegistrationCollection()
+	err := collection.FindOne(context.TODO(), bson.M{"accounts.credsid": credsid}).Decode(&r)
+
 	count := GetResourcesCount(r.Categories)
-	fmt.Println("Count: ", count)
+
+	//	fmt.Println("Count: ", count)
+
 	wg.Add(count)
 	if err != nil {
-		fmt.Println(err.Error())
+		Logger.Error(err.Error())
 	} else {
 		for i := 0; i < len(r.Categories); i++ {
 
@@ -59,9 +61,11 @@ func CronTask(credsid string) {
 		}
 
 	}
+
 	wg.Wait()
 	elapsed := time.Since(start)
-	log.Printf("Sync took %s", elapsed)
+
+	Logger.Info("Sync took " + elapsed.String())
 
 }
 
@@ -69,23 +73,26 @@ func GetResourceData(resource string, credsid string, wg *sync.WaitGroup) {
 	port := env.GetEnvironmentVariable("PORT")
 	url := "http://localhost:" + port + "/servicediscovery/cloudresources/azure/service/" + resource + "?credsid=" + credsid
 	method := "GET"
+
 	client := &http.Client{}
+
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
-	fmt.Println(string(body))
+
+	Logger.Info(string(body))
 	time.Sleep(time.Duration(10 * time.Millisecond))
 	wg.Done()
 }
@@ -143,6 +150,7 @@ func CronTask(credsid string) {
 type Set_DT struct {
 	ti string
 }
+
 type Set_GT struct {
 	year    int
 	day     int
@@ -164,14 +172,12 @@ var s2 Set_GT
 // }
 
 func ExecuteCronJob() {
-	fmt.Println("Inside execute cron job")
+	Logger.Info("Inside execute cron job")
 	s = gocron.NewScheduler(time.Now().Location())
 	s.StartAsync()
 
 }
 func myTask() {
-
-	fmt.Println("mytask")
 	CronTask(s2.credsid)
 	Collections(s2.credsid)
 }
@@ -184,7 +190,6 @@ func IsCred(credsid string) (result bool) {
 		fmt.Println(err)
 		result = false
 	} else {
-		fmt.Println("correct")
 		result = true
 	}
 	return result
@@ -205,12 +210,13 @@ func SetJob(c *gin.Context) {
 		var iscred bool
 		cred := c.PostForm("credsid")
 		iscred = IsCred(cred)
-		fmt.Println(iscred)
+
+		//fmt.Println(iscred)
+
 		if iscred {
 			s2.credsid = c.PostForm("credsid")
 			if c.PostForm("Date_time") != "" {
-				fmt.Println("date-time")
-				//fmt.Println(c.PostForm("Date_time"))
+				//fmt.Println("date-time")
 				s1.ti = c.PostForm("Date_time")
 
 				timeStampString := s1.ti
@@ -218,8 +224,8 @@ func SetJob(c *gin.Context) {
 				timeStampDate, err := time.Parse(DatelayOut, timeStampString)
 
 				if err != nil {
-					fmt.Println(err)
-					os.Exit(1)
+					Logger.Error(err.Error())
+					//os.Exit(1)
 				}
 				cnt++
 
@@ -243,9 +249,10 @@ func SetJob(c *gin.Context) {
 				j, _ := s.Every(1).Days().LimitRunsTo(1).At(t).Do(myTask)
 				j.Tag(tag)
 
-				fmt.Println("\nJob added, will run at:", t, "\nID:", tag)
+				Logger.Info("\nJob added, will run at:" + t.String())
+				Logger.Info("ID:" + tag)
 				c.JSON(http.StatusOK, bson.M{"Job added, it will run at": t, "ID": tag})
-				fmt.Println(s.Jobs())
+				//	fmt.Println(s.Jobs())
 
 			} else if c.PostForm("Periodic_hr") != "" {
 
@@ -281,18 +288,19 @@ func SetJob(c *gin.Context) {
 				j, _ := s.Every(1).Day().At(t).Do(myTask)
 				j.Tag(tag)
 
-				fmt.Println("\nJob added it will run at :", str, "\nID:", tag)
-				fmt.Println(s.Jobs())
+				Logger.Info("Job added it will run at : " + str)
+				Logger.Info("\nID:" + tag)
+				//fmt.Println(s.Jobs())
 
 			} else if c.PostForm("Periodic_min") != "" {
 
 				s1.ti = c.PostForm("Periodic_min")
 				timeStampString := s1.ti
 
-				timeStampMin, err3 := strconv.Atoi(timeStampString)
-				if err3 != nil {
-					fmt.Println(err3)
-					os.Exit(1)
+				timeStampMin, err := strconv.Atoi(timeStampString)
+				if err != nil {
+					Logger.Info(err.Error())
+					//os.Exit(1)
 				}
 
 				cnt++
@@ -320,11 +328,11 @@ func SetJob(c *gin.Context) {
 
 				fmt.Println("\nJob added it will run in ", s2.min, "minutes", "\nID:", tag)
 
-				fmt.Println(s.Jobs())
+				//fmt.Println(s.Jobs())
 
 			}
 		} else {
-			fmt.Println("Creds does not exist")
+			Logger.Error("Creds does not exist")
 		}
 	} else {
 		c.JSON(http.StatusUnauthorized, "Unauthorized")
@@ -342,14 +350,14 @@ func Task(c *gin.Context) {
 		j = s.Jobs()
 
 		if len(j) == 0 {
-			fmt.Println("\nThere are no jobs set")
+			Logger.Info("There are no jobs set")
 		}
 		if len(j) != 0 {
 
-			fmt.Println("List of all jobs")
+			Logger.Info("List of all jobs")
 			for i := 0; i < len(j); i++ {
 
-				fmt.Println("ID:", j[i].Tags())
+				fmt.Println("ID: ", j[i].Tags())
 				fmt.Println("Is scheduled to run at: ", j[i].NextRun())
 
 			}
@@ -359,7 +367,7 @@ func Task(c *gin.Context) {
 		// fmt.Println(j)
 
 	case "runall":
-		fmt.Println("\nRunning all jobs,\n This might take some time")
+		Logger.Info("\nRunning all jobs,\n This might take some time")
 		s.RunAllWithDelay(1)
 
 	case "Delete":
@@ -370,18 +378,18 @@ func Task(c *gin.Context) {
 		// var c []string
 		err := s.RemoveByTag(id)
 
-		fmt.Println("Deleted")
+		Logger.Info("Deleted")
 
 		if err != nil {
-			fmt.Println(err)
+			Logger.Error(err.Error())
 		}
 
 	case "run_id":
 		id := c.PostForm("ID")
 		if id != "" {
-			fmt.Println("\nRunning ID:", id)
+			Logger.Info("\nRunning ID:" + id)
 			s.RunByTag(id)
-			fmt.Println("Done")
+			Logger.Info("Done")
 		}
 
 	}
@@ -392,9 +400,9 @@ func Task(c *gin.Context) {
 var db = database.Database()
 
 func GetOSType(data interface{}) string {
-	p, e := json.Marshal(data)
-	if e != nil {
-		fmt.Println(e)
+	p, err := json.Marshal(data)
+	if err != nil {
+		Logger.Error(err.Error())
 	}
 
 	var d = models.Properties{}
@@ -408,19 +416,18 @@ func Collections(creds string) {
 
 	start := time.Now()
 	var wg = sync.WaitGroup{}
-	fmt.Println("****************************************")
+
 	arr := database.ListCollectionNames(db)
 	//fmt.Println(len(arr))
 	wg.Add(len(arr))
 	for i := 0; i < len(arr); i++ {
-		fmt.Println("*******")
-		fmt.Println(arr[i])
+		Logger.Info(arr[i])
 		go SyncResources(arr[i], creds, &wg)
 	}
 
 	wg.Wait()
 	elapsed := time.Since(start)
-	log.Printf("Collections took %s", elapsed)
+	Logger.Info("Collections took " + elapsed.String())
 }
 
 func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
@@ -428,11 +435,12 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 	var Err error
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		log.Fatalf("failed to obtain a credential: %v", err)
+		Logger.Error("failed to obtain a credential: " + err.Error())
 	}
+
 	client := armresources.NewResourcesClient(helpers.SubscriptionID(creds), cred, nil)
 	results := database.GetAllDocuments(db, collection)
-	fmt.Println(collection + " Query Reult:")
+	Logger.Info(collection + " Query Reult:")
 	//if collection == database.UserCollectionName() || collection == database.CredentialCollectionName() || collection == database.RegistrationCollectionName() {
 	//	fmt.Println("not a resource")
 	//} else {
@@ -458,7 +466,7 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 			}
 
 			if Err != nil {
-				fmt.Println("failed to obtain a response: ", err)
+				Logger.Error("failed to obtain a response: " + err.Error())
 
 				var res []byte
 				var er error
@@ -468,13 +476,13 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 					r := models.VirtualMachine{Name: n, Type: collection, OsType: ostype}
 					res, er = json.Marshal(r)
 					if er != nil {
-						fmt.Println(er)
+						Logger.Error(er.Error())
 					}
 				} else {
 					r := models.Resource{Name: n, Type: collection}
 					res, er = json.Marshal(r)
 					if er != nil {
-						fmt.Println(er)
+						Logger.Error(er.Error())
 					}
 				}
 
@@ -486,9 +494,9 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 
 			}
 
-			out, e := json.Marshal(Resp)
-			if e != nil {
-				fmt.Println(err)
+			out, err := json.Marshal(Resp)
+			if err != nil {
+				Logger.Error(err.Error())
 			}
 
 			var d map[string]interface{}

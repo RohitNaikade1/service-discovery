@@ -2,8 +2,7 @@ package database
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"service-discovery/middlewares"
 	"service-discovery/models"
 	"time"
 
@@ -14,26 +13,29 @@ import (
 )
 
 var Client *mongo.Client
+var Logger = middlewares.Logger()
 
+//Mongo Connection
 func ConnectToMongoDB(url models.MongoCall) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
 	defer cancel()
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(url.DBURL))
 	if err != nil {
-		log.Fatal(err)
+		Logger.Error(err.Error())
 	}
 	Client = mongoClient
-	fmt.Println("Connection established with MongoDB -", url.DBURL)
+	Logger.Info("Connection established with MongoDB -" + url.DBURL)
 }
 
+//End mongo connection
 func DisconnectMongoDB() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
 	defer cancel()
 	err := Client.Disconnect(ctx)
 	if err != nil {
-		log.Fatal(err)
+		Logger.Error(err.Error())
 	}
-	fmt.Println("Ended Connection to MongoDB.")
+	Logger.Info("Ended Connection to MongoDB.")
 }
 
 // Validates Collection Exists or not - returns boolean value
@@ -43,7 +45,7 @@ func ValidateCollection(db string, collection string) (result bool) {
 	filter := bson.D{}
 	cursor, err := destination.ListCollectionNames(context.TODO(), filter)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
 
 	result = false
@@ -57,16 +59,18 @@ func ValidateCollection(db string, collection string) (result bool) {
 	return result
 }
 
+//Validates document exists or not
 func ValidateDocument(db string, collection string, filter primitive.M) (result bool) {
 	destination := Client.Database(db).Collection(collection)
 	curser, err := destination.Find(context.TODO(), filter, options.Find().SetLimit(1))
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
+
 	var results []bson.M
-	er := curser.All(context.TODO(), &results)
-	if er != nil {
-		fmt.Println(er)
+	err = curser.All(context.TODO(), &results)
+	if err != nil {
+		Logger.Error(err.Error())
 	}
 
 	count := len(results)
@@ -87,13 +91,13 @@ func GetAllDocuments(db string, collection string) (arr []primitive.M) {
 	destination := Client.Database(db).Collection(collection)
 	cursor, err := destination.Find(ctx, bson.D{})
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
 
 	var results []bson.M
-	e := cursor.All(ctx, &results)
-	if e != nil {
-		fmt.Println(e)
+	err = cursor.All(ctx, &results)
+	if err != nil {
+		Logger.Error(err.Error())
 	}
 
 	return results
@@ -123,10 +127,11 @@ func UpdateToMongo(data interface{}, db string, c string, filter primitive.M) (r
 	}
 	destination := Client.Database(db).Collection(c)
 	r := destination.FindOneAndUpdate(ctx, filter, update, &opt)
-	fmt.Println("Finished saving data.")
+	Logger.Info("Finished saving data.")
 	return r, err
 }
 
+//List of call the collections
 func ListCollectionNames(db string) []string {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
 	defer cancel()
@@ -134,7 +139,7 @@ func ListCollectionNames(db string) []string {
 	filter := bson.D{{}}
 	cursor, err := destination.ListCollectionNames(ctx, filter)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
 
 	return cursor

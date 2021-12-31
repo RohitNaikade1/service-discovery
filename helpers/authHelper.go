@@ -2,13 +2,15 @@ package helpers
 
 import (
 	"context"
-	"fmt"
 	"service-discovery/database"
+	"service-discovery/middlewares"
 	"service-discovery/models"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var Logger = middlewares.Logger()
 
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
@@ -44,7 +46,7 @@ func GetUser(userId string) (user models.User) {
 	col := database.UserCollection()
 	err := col.FindOne(context.TODO(), bson.M{"_id": userId}).Decode(&user)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 	}
 	return user
 }

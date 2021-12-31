@@ -30,7 +30,7 @@ func RegistrationExist(name string, creds string) bool {
 	} else {
 		result = false
 	}
-	fmt.Println(registration)
+	//fmt.Println(registration)
 	return result
 }
 
@@ -52,8 +52,6 @@ func GetRegistration(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
-
-	//user := helpers.GetUserByCredsID(registration.Accounts.CredsId)
 
 	if database.ValidateCollection(database.Database(), database.RegistrationCollectionName()) {
 		if database.ValidateDocument(database.Database(), database.RegistrationCollectionName(), bson.M{"_id": registration.ID}) {
@@ -85,7 +83,7 @@ func GetRegistrations(c *gin.Context) {
 	for _, data := range result {
 		out, err := json.Marshal(data)
 		if err != nil {
-			fmt.Println(err)
+			Logger.Error(err.Error())
 		}
 		arr = append(arr, string(out))
 	}
@@ -124,7 +122,6 @@ func CreateRegistration(c *gin.Context) {
 	collection := database.RegistrationCollection()
 	fmt.Println(registration.Name, " ", registration.Accounts.CredsId)
 
-	//user := helpers.GetUserByCredsID(registration.Accounts.CredsId)
 	if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 		if database.ValidateDocument(database.Database(), database.RegistrationCollectionName(), bson.M{"credsid": registration.Accounts.CredsId, "name": registration.Name}) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "credsid or name used already"})
@@ -176,7 +173,6 @@ func UpdateRegistration(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
-
 }
 
 func DeleteRegistration(c *gin.Context) {

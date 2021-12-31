@@ -1,10 +1,12 @@
 package env
 
 import (
-	"log"
+	"service-discovery/middlewares"
 
 	"github.com/spf13/viper"
 )
+
+var Logger = middlewares.Logger()
 
 func GetEnvironmentVariable(key string) string {
 	viper.SetConfigFile(".env")
@@ -13,11 +15,12 @@ func GetEnvironmentVariable(key string) string {
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		log.Fatalf("Error while reading config file %s", err)
+		Logger.Error("Error while reading config file " + err.Error())
 	}
+
 	value, ok := viper.Get(key).(string)
 	if !ok {
-		log.Fatalf("Invalid type assertion")
+		Logger.Error("Invalid type assertion")
 	}
 	return value
 }

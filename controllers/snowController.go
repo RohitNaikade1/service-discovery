@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"service-discovery/models"
 	"strings"
@@ -30,35 +29,31 @@ func PostApi(body string) (sysid string) {
 		payload,
 	)
 	if err != nil {
-		log.Fatalf("Error creating http request: %v", err)
+		Logger.Error("Error creating http request: " + err.Error())
 	}
 
 	req.Header.Add("Authorization", "Basic YWRtaW46OHRsVE5wTlNzTTFy")
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Fatalf("Error sending http request: %v", err)
+		Logger.Error("Error sending http request: " + err.Error())
 	}
 
 	responseBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Fatalf("Error reading http response body: %v", err)
+		Logger.Error("Error reading http response body: " + err.Error())
 	}
 
-	log.Println(string(responseBody))
-	log.Println(res.Status)
+	Logger.Info(string(responseBody))
+	Logger.Info(res.Status)
 
 	var s models.Results
 	json.Unmarshal(responseBody, &s)
-
-	//fmt.Println(s.Result.SysID)
 
 	return s.Result.SysID
 }
 
 func DeActive(data string) {
-	//fmt.Println(data)
-	//body := fmt.Sprint(data)
 	payload := strings.NewReader(data)
 	url := "https://dev55842.service-now.com/api/631287/pocapi/deactive"
 	method := "POST"
@@ -67,23 +62,23 @@ func DeActive(data string) {
 	req, err := http.NewRequest(method, url, payload)
 
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 		return
 	}
 	req.Header.Add("Authorization", "Basic YWRtaW46OHRsVE5wTlNzTTFy")
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 		return
 	}
 	defer res.Body.Close()
 
 	responseBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error(err.Error())
 		return
 	}
-	fmt.Println(string(responseBody))
-	fmt.Println(res.Status)
+	Logger.Info(string(responseBody))
+	Logger.Info(res.Status)
 }

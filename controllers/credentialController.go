@@ -65,8 +65,6 @@ func CreateCredentials(c *gin.Context) {
 	cred.Created_At = dt.String()
 	cred.Updated_At = time.Now().Local().String()
 
-	//user := helpers.GetUser(cred.User.ID)
-
 	if cred.UserName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
 	} else if cred.Provider == "" {

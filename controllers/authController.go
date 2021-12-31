@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
+	log "service-discovery/middlewares"
 	"service-discovery/models"
 	"strings"
 	"time"
@@ -49,7 +49,7 @@ func ValidateToken(signedToken string) (claim *models.Claims, result string) {
 		return []byte(jwtKey), nil
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Logger().Error(err.Error())
 		result = err.Error()
 	}
 
