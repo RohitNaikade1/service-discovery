@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"strconv"
 
 	"net/http"
@@ -45,26 +44,26 @@ func GetVM(subid string) string {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val1 := range resp.ResourceGroupsListResult.Value {
-			Logger.Info("Rg name: " + *val1.Name)
+		for _, resourcegroup := range resp.ResourceGroupsListResult.Value {
+			Logger.Info("Resource group: " + *resourcegroup.Name)
 
 			vm_client := armcompute.NewVirtualMachinesClient(subid, GetDefaultCred(), nil)
 
-			pager := vm_client.List(*val1.Name, nil)
+			pager := vm_client.List(*resourcegroup.Name, nil)
 			for pager.NextPage(context.Background()) {
 				resp := pager.PageResponse()
 				if len(resp.VirtualMachinesListResult.Value) == 0 {
 					Logger.Warn("missing payload")
 				}
-				for _, val2 := range resp.VirtualMachinesListResult.Value {
-					Logger.Info("VM: " + *val2.Name)
+				for _, vm := range resp.VirtualMachinesListResult.Value {
+					Logger.Info("VM: " + *vm.Name)
 
 					instanceview := armcompute.InstanceViewTypesInstanceView
 					opt := armcompute.VirtualMachinesGetOptions{
 						Expand: &instanceview,
 					}
 
-					result, err := vm_client.Get(context.TODO(), *val1.Name, *val2.Name, &opt)
+					result, err := vm_client.Get(context.TODO(), *resourcegroup.Name, *vm.Name, &opt)
 					if err != nil {
 						Logger.Error(err.Error())
 					}
@@ -76,18 +75,18 @@ func GetVM(subid string) string {
 
 					sysid := PostApi(string(out))
 					json.Unmarshal(out, &data)
-					p := AddSysID(data, sysid)
+					sysid_map := AddSysID(data, sysid)
 
 					filter := bson.M{"id": *result.ID}
-					database.UpdateToMongo(p, database.Database(), "virtualmachines", filter)
+					database.UpdateToMongo(sysid_map, database.Database(), "virtualmachines", filter)
 
-					r, err := json.Marshal(p)
+					response, err := json.Marshal(sysid_map)
 					if err != nil {
 						logger.Logger().Error(err.Error())
 					}
-					httpResponse = append(httpResponse, string(r))
+					httpResponse = append(httpResponse, string(response))
 
-					time.Sleep(time.Millisecond * 500)
+					//time.Sleep(time.Millisecond * 500)
 
 				}
 			}
@@ -105,29 +104,30 @@ func GetVM(subid string) string {
 func GetStorageAccount(subid string) string {
 	var httpResponse []string
 
-	rg_client := armresources.NewResourceGroupsClient(subid, GetDefaultCred(), nil)
+	resourcegroup_client := armresources.NewResourceGroupsClient(subid, GetDefaultCred(), nil)
 
-	pager := rg_client.List(nil)
+	pager := resourcegroup_client.List(nil)
 	for pager.NextPage(context.Background()) {
 		resp := pager.PageResponse()
 		if len(resp.ResourceGroupsListResult.Value) == 0 {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val1 := range resp.ResourceGroupsListResult.Value {
-			Logger.Info("Rg name: " + *val1.Name)
-			sa_client := armstorage.NewStorageAccountsClient(subid, GetDefaultCred(), nil)
-			pager := sa_client.ListByResourceGroup(*val1.Name, nil)
+		for _, resourcegroup := range resp.ResourceGroupsListResult.Value {
+			Logger.Info("Resourcegroup: " + *resourcegroup.Name)
+
+			storageaccount_client := armstorage.NewStorageAccountsClient(subid, GetDefaultCred(), nil)
+			pager := storageaccount_client.ListByResourceGroup(*resourcegroup.Name, nil)
 			for pager.NextPage(context.Background()) {
 				resp := pager.PageResponse()
 				if len(resp.StorageAccountsListByResourceGroupResult.Value) == 0 {
 					Logger.Warn("missing payload")
 				}
 
-				for _, val2 := range resp.StorageAccountsListByResourceGroupResult.Value {
-					Logger.Info("SA: " + *val2.Name)
+				for _, storageaccount := range resp.StorageAccountsListByResourceGroupResult.Value {
+					Logger.Info("Storage account: " + *storageaccount.Name)
 
-					result, err := sa_client.GetProperties(context.Background(), *val1.Name, *val2.Name, nil)
+					result, err := storageaccount_client.GetProperties(context.Background(), *resourcegroup.Name, *storageaccount.Name, nil)
 					if err != nil {
 						Logger.Error(err.Error())
 					}
@@ -139,17 +139,17 @@ func GetStorageAccount(subid string) string {
 
 					sysid := PostApi(string(out))
 					json.Unmarshal(out, &data)
-					p := AddSysID(data, sysid)
+					sysid_map := AddSysID(data, sysid)
 
 					filter := bson.M{"id": *result.ID}
-					database.UpdateToMongo(p, database.Database(), "storageaccounts", filter)
+					database.UpdateToMongo(sysid_map, database.Database(), "storageaccounts", filter)
 
-					r, err := json.Marshal(p)
+					response, err := json.Marshal(sysid_map)
 					if err != nil {
 						Logger.Error(err.Error())
 					}
 
-					httpResponse = append(httpResponse, string(r))
+					httpResponse = append(httpResponse, string(response))
 
 					time.Sleep(time.Millisecond * 500)
 				}
@@ -177,28 +177,29 @@ func GetNetworkInterfaces(subid string) string {
 			Logger.Error("missing payload")
 		}
 
-		for _, val := range resp.NetworkInterfacesListAllResult.Value {
-			Logger.Info("Network Interface: " + *val.Name)
-			out, err := json.Marshal(val)
+		for _, networkinterface := range resp.NetworkInterfacesListAllResult.Value {
+			Logger.Info("Network Interface: " + *networkinterface.Name)
+
+			out, err := json.Marshal(networkinterface)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
 			sysid := PostApi(string(out))
 			json.Unmarshal(out, &data)
-			p := AddSysID(data, sysid)
+			sysid_map := AddSysID(data, sysid)
 
-			filter := bson.M{"id": *val.ID}
-			database.UpdateToMongo(p, database.Database(), "networkinterfaces", filter)
+			filter := bson.M{"id": *networkinterface.ID}
+			database.UpdateToMongo(sysid_map, database.Database(), "networkinterfaces", filter)
 
-			r, err := json.Marshal(p)
+			response, err := json.Marshal(sysid_map)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
-			httpResponse = append(httpResponse, string(r))
+			httpResponse = append(httpResponse, string(response))
 
-			time.Sleep(time.Millisecond * 700)
+			//time.Sleep(time.Millisecond * 700)
 		}
 	}
 	if err := pager.Err(); err != nil {
@@ -222,28 +223,29 @@ func GetNetworkSecurityGroups(subid string) string {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val := range resp.NetworkSecurityGroupsListAllResult.Value {
-			Logger.Info("Network Security Group: " + *val.Name)
+		for _, networksecuritygroup := range resp.NetworkSecurityGroupsListAllResult.Value {
+			Logger.Info("Network Security Group: " + *networksecuritygroup.Name)
 
-			out, err := json.Marshal(val)
+			out, err := json.Marshal(networksecuritygroup)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
 			sysid := PostApi(string(out))
 			json.Unmarshal(out, &data)
-			p := AddSysID(data, sysid)
+			sysid_map := AddSysID(data, sysid)
 
-			filter := bson.M{"id": *val.ID}
-			database.UpdateToMongo(p, database.Database(), "networksecuritygroups", filter)
+			filter := bson.M{"id": *networksecuritygroup.ID}
+			database.UpdateToMongo(sysid_map, database.Database(), "networksecuritygroups", filter)
 
-			r, err := json.Marshal(p)
+			response, err := json.Marshal(sysid_map)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
-			httpResponse = append(httpResponse, string(r))
-			time.Sleep(time.Millisecond * 150)
+			httpResponse = append(httpResponse, string(response))
+
+			//time.Sleep(time.Millisecond * 150)
 		}
 	}
 
@@ -268,29 +270,29 @@ func GetDisk(subid string) string {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val := range resp.DisksListResult.Value {
-			Logger.Info("Disk: " + *val.Name)
+		for _, disk := range resp.DisksListResult.Value {
+			Logger.Info("Disk: " + *disk.Name)
 
-			out, err := json.Marshal(val)
+			out, err := json.Marshal(disk)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
 			sysid := PostApi(string(out))
 			json.Unmarshal(out, &data)
-			p := AddSysID(data, sysid)
+			sysid_map := AddSysID(data, sysid)
 
-			filter := bson.M{"id": *val.ID}
-			database.UpdateToMongo(p, database.Database(), "disks", filter)
+			filter := bson.M{"id": *disk.ID}
+			database.UpdateToMongo(sysid_map, database.Database(), "disks", filter)
 
-			r, err := json.Marshal(p)
+			response, err := json.Marshal(sysid_map)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
-			httpResponse = append(httpResponse, string(r))
+			httpResponse = append(httpResponse, string(response))
 
-			time.Sleep(time.Millisecond * 800)
+			//time.Sleep(time.Millisecond * 800)
 		}
 	}
 	if err := pager.Err(); err != nil {
@@ -359,29 +361,29 @@ func GetResourceGroups(subid string) string {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val := range resp.ResourceGroupsListResult.Value {
-			Logger.Info("Resource Group: " + *val.Name)
+		for _, resourcegroup := range resp.ResourceGroupsListResult.Value {
+			Logger.Info("Resource Group: " + *resourcegroup.Name)
 
-			out, err := json.Marshal(val)
+			out, err := json.Marshal(resourcegroup)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
 			sysid := PostApi(string(out))
 			json.Unmarshal(out, &data)
-			p := AddSysID(data, sysid)
+			sysid_map := AddSysID(data, sysid)
 
-			filter := bson.M{"id": *val.ID}
-			database.UpdateToMongo(p, database.Database(), "resourcegroups", filter)
+			filter := bson.M{"id": *resourcegroup.ID}
+			database.UpdateToMongo(sysid_map, database.Database(), "resourcegroups", filter)
 
-			r, err := json.Marshal(p)
+			response, err := json.Marshal(sysid_map)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
-			httpResponse = append(httpResponse, string(r))
+			httpResponse = append(httpResponse, string(response))
 
-			time.Sleep(time.Millisecond * 500)
+			//time.Sleep(time.Millisecond * 500)
 		}
 	}
 	if err := pager.Err(); err != nil {
@@ -389,7 +391,6 @@ func GetResourceGroups(subid string) string {
 	}
 
 	stringByte := "[" + strings.Join(httpResponse, " ,") + "]"
-
 	return stringByte
 }
 
@@ -406,28 +407,29 @@ func GetVirtualNetworks(subid string) string {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val := range resp.VirtualNetworksListAllResult.Value {
-			Logger.Info("Virtual Network: " + *val.Name)
+		for _, virtualnetwork := range resp.VirtualNetworksListAllResult.Value {
+			Logger.Info("Virtual Network: " + *virtualnetwork.Name)
 
-			out, err := json.Marshal(val)
+			out, err := json.Marshal(virtualnetwork)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
 			sysid := PostApi(string(out))
 			json.Unmarshal(out, &data)
-			p := AddSysID(data, sysid)
+			sysid_map := AddSysID(data, sysid)
 
-			filter := bson.M{"id": *val.ID}
-			database.UpdateToMongo(p, database.Database(), "virtualnetworks", filter)
+			filter := bson.M{"id": *virtualnetwork.ID}
+			database.UpdateToMongo(sysid_map, database.Database(), "virtualnetworks", filter)
 
-			r, err := json.Marshal(p)
+			response, err := json.Marshal(sysid_map)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
-			httpResponse = append(httpResponse, string(r))
 
-			time.Sleep(time.Millisecond * 500)
+			httpResponse = append(httpResponse, string(response))
+
+			//time.Sleep(time.Millisecond * 500)
 		}
 	}
 	if err := pager.Err(); err != nil {
@@ -441,9 +443,9 @@ func GetVirtualNetworks(subid string) string {
 func GetDatabase(subid string) string {
 	var httpResponse []string
 
-	rg_client := armresources.NewResourceGroupsClient(subid, GetDefaultCred(), nil)
+	resourcegroup_client := armresources.NewResourceGroupsClient(subid, GetDefaultCred(), nil)
 
-	pager := rg_client.List(nil)
+	pager := resourcegroup_client.List(nil)
 
 	for pager.NextPage(context.Background()) {
 		resp := pager.PageResponse()
@@ -451,59 +453,64 @@ func GetDatabase(subid string) string {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val1 := range resp.ResourceGroupsListResult.Value {
-			Logger.Info("Rg name" + *val1.Name)
+		for _, resourcegroup := range resp.ResourceGroupsListResult.Value {
+			Logger.Info("Rg name" + *resourcegroup.Name)
+
 			server_client := armsql.NewServersClient(subid, GetDefaultCred(), nil)
-			pager1 := server_client.ListByResourceGroup(*val1.Name, nil)
-			for pager1.NextPage(context.Background()) {
-				resp1 := pager1.PageResponse()
-				if len(resp1.ServersListByResourceGroupResult.Value) == 0 {
+
+			server_pager := server_client.ListByResourceGroup(*resourcegroup.Name, nil)
+			for server_pager.NextPage(context.Background()) {
+				server_resp := server_pager.PageResponse()
+				if len(server_resp.ServersListByResourceGroupResult.Value) == 0 {
 					Logger.Warn("missing payload")
 				}
 
-				for _, val2 := range resp1.ServersListByResourceGroupResult.Value {
-					log.Println("Server Name", *val2.Name)
+				for _, server := range server_resp.ServersListByResourceGroupResult.Value {
+					Logger.Info("Server Name" + *server.Name)
+
 					database_client := armsql.NewDatabasesClient(subid, GetDefaultCred(), nil)
-					pager2 := database_client.ListByServer(*val1.Name, *val2.Name, nil)
-					for pager2.NextPage(context.Background()) {
-						resp2 := pager2.PageResponse()
-						if len(resp2.DatabasesListByServerResult.Value) == 0 {
+
+					database_pager := database_client.ListByServer(*resourcegroup.Name, *server.Name, nil)
+
+					for database_pager.NextPage(context.Background()) {
+						database_resp := database_pager.PageResponse()
+						if len(database_resp.DatabasesListByServerResult.Value) == 0 {
 							Logger.Warn("missing payload")
 						}
 
-						for _, val3 := range resp2.DatabasesListByServerResult.Value {
-							Logger.Info("Database: " + *val3.Name)
+						for _, sqldatabase := range database_resp.DatabasesListByServerResult.Value {
+							Logger.Info("Database: " + *sqldatabase.Name)
 
-							out, err := json.Marshal(val3)
+							out, err := json.Marshal(sqldatabase)
 							if err != nil {
 								Logger.Error(err.Error())
 							}
 
 							sysid := PostApi(string(out))
 							json.Unmarshal(out, &data)
-							p := AddSysID(data, sysid)
+							sysid_map := AddSysID(data, sysid)
 
-							filter := bson.M{"id": *val3.ID}
-							database.UpdateToMongo(p, database.Database(), "sqldatabases", filter)
+							filter := bson.M{"id": *sqldatabase.ID}
+							database.UpdateToMongo(sysid_map, database.Database(), "sqldatabases", filter)
 
-							r, err := json.Marshal(p)
+							response, err := json.Marshal(sysid_map)
 							if err != nil {
 								Logger.Error(err.Error())
 							}
 
-							httpResponse = append(httpResponse, string(r))
+							httpResponse = append(httpResponse, string(response))
 
-							time.Sleep(time.Millisecond * 500)
+							//time.Sleep(time.Millisecond * 500)
 						}
 					}
 
-					if err := pager2.Err(); err != nil {
+					if err := database_pager.Err(); err != nil {
 						Logger.Error(err.Error())
 					}
 				}
 			}
 
-			if err := pager1.Err(); err != nil {
+			if err := server_pager.Err(); err != nil {
 				Logger.Error(err.Error())
 			}
 		}
@@ -514,7 +521,6 @@ func GetDatabase(subid string) string {
 	}
 
 	stringByte := "[" + strings.Join(httpResponse, " ,") + "]"
-
 	return stringByte
 }
 
@@ -522,6 +528,7 @@ func GetLoadBalancers(subid string) string {
 	var httpResponse []string
 
 	client := armnetwork.NewLoadBalancersClient(subid, GetDefaultCred(), nil)
+
 	pager := client.ListAll(nil)
 	for pager.NextPage(context.Background()) {
 		resp := pager.PageResponse()
@@ -529,27 +536,27 @@ func GetLoadBalancers(subid string) string {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val := range resp.LoadBalancersListAllResult.Value {
-			Logger.Info("Load Balancer: " + *val.Name)
+		for _, loadbalancer := range resp.LoadBalancersListAllResult.Value {
+			Logger.Info("Load Balancer: " + *loadbalancer.Name)
 
-			out, err := json.Marshal(val)
+			out, err := json.Marshal(loadbalancer)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
 			sysid := PostApi(string(out))
 			json.Unmarshal(out, &data)
-			p := AddSysID(data, sysid)
+			sysid_map := AddSysID(data, sysid)
 
-			filter := bson.M{"id": *val.ID}
-			database.UpdateToMongo(p, database.Database(), "loadbalancers", filter)
+			filter := bson.M{"id": *loadbalancer.ID}
+			database.UpdateToMongo(sysid_map, database.Database(), "loadbalancers", filter)
 
-			r, err := json.Marshal(p)
+			response, err := json.Marshal(sysid_map)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
-			httpResponse = append(httpResponse, string(r))
+			httpResponse = append(httpResponse, string(response))
 		}
 
 	}
@@ -570,33 +577,36 @@ func GetSubnets(subid string) string {
 
 	pager := resourcegroup_client.List(nil)
 	for pager.NextPage(context.Background()) {
-		resp1 := pager.PageResponse()
-		if len(resp1.ResourceGroupsListResult.Value) == 0 {
+		resourcegroup_resp := pager.PageResponse()
+		if len(resourcegroup_resp.ResourceGroupsListResult.Value) == 0 {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val1 := range resp1.ResourceGroupsListResult.Value {
+		for _, resourcegroup := range resourcegroup_resp.ResourceGroupsListResult.Value {
 
-			Logger.Info("Resource Group: " + *val1.Name)
-			vnet_pager := virtualnetwork_client.List(*val1.Name, nil)
+			Logger.Info("Resource Group: " + *resourcegroup.Name)
+			vnet_pager := virtualnetwork_client.List(*resourcegroup.Name, nil)
 			for vnet_pager.NextPage(context.Background()) {
-				resp2 := vnet_pager.PageResponse()
-				if len(resp2.VirtualNetworksListResult.Value) == 0 {
+
+				virtualnetwork_resp := vnet_pager.PageResponse()
+				if len(virtualnetwork_resp.VirtualNetworksListResult.Value) == 0 {
 					Logger.Warn("missing payload")
 				}
-				for _, val2 := range resp2.VirtualNetworksListResult.Value {
-					Logger.Info("Virtual Network: " + *val2.Name)
-					subnet_pager := subnet_client.List(*val1.Name, *val2.Name, nil)
+
+				for _, virtualnetwork := range virtualnetwork_resp.VirtualNetworksListResult.Value {
+					Logger.Info("Virtual Network: " + *virtualnetwork.Name)
+
+					subnet_pager := subnet_client.List(*resourcegroup.Name, *virtualnetwork.Name, nil)
 					for subnet_pager.NextPage(context.Background()) {
 						subnet_resp := subnet_pager.PageResponse()
 						if len(subnet_resp.SubnetsListResult.Value) == 0 {
 							Logger.Warn("missing payload")
 						}
 
-						for _, subnet_val := range subnet_resp.SubnetsListResult.Value {
-							Logger.Info("Subnet: " + *subnet_val.Name)
+						for _, subnet := range subnet_resp.SubnetsListResult.Value {
+							Logger.Info("Subnet: " + *subnet.Name)
 
-							subnet_response, err := subnet_client.Get(context.TODO(), *val1.Name, *val2.Name, *subnet_val.Name, nil)
+							subnet_response, err := subnet_client.Get(context.TODO(), *resourcegroup.Name, *virtualnetwork.Name, *subnet.Name, nil)
 							if err != nil {
 								Logger.Error(err.Error())
 							}
@@ -608,17 +618,17 @@ func GetSubnets(subid string) string {
 
 							sysid := PostApi(string(out))
 							json.Unmarshal(out, &data)
-							p := AddSysID(data, sysid)
+							sysid_map := AddSysID(data, sysid)
 
-							filter := bson.M{"id": *subnet_val.ID}
-							database.UpdateToMongo(p, database.Database(), "subnets", filter)
+							filter := bson.M{"id": *subnet.ID}
+							database.UpdateToMongo(sysid_map, database.Database(), "subnets", filter)
 
-							r, err := json.Marshal(p)
+							response, err := json.Marshal(sysid_map)
 							if err != nil {
 								Logger.Error(err.Error())
 							}
 
-							httpResponse = append(httpResponse, string(r))
+							httpResponse = append(httpResponse, string(response))
 						}
 					}
 				}
@@ -637,6 +647,7 @@ func GetSQLServers(subid string) string {
 	var httpResponse []string
 
 	server_client := armsql.NewServersClient(subid, GetDefaultCred(), nil)
+
 	pager := server_client.List(nil)
 	for pager.NextPage(context.Background()) {
 		resp := pager.PageResponse()
@@ -644,25 +655,26 @@ func GetSQLServers(subid string) string {
 			Logger.Warn("missing payload")
 		}
 
-		for _, val := range resp.ServersListResult.Value {
-			Logger.Info("Server Name" + *val.Name)
-			out, err := json.Marshal(val)
+		for _, server := range resp.ServersListResult.Value {
+			Logger.Info("Server Name" + *server.Name)
+			out, err := json.Marshal(server)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
 
 			sysid := PostApi(string(out))
 			json.Unmarshal(out, &data)
-			p := AddSysID(data, sysid)
+			sysid_map := AddSysID(data, sysid)
 
-			filter := bson.M{"id": *val.ID}
-			database.UpdateToMongo(p, database.Database(), "sqlservers", filter)
+			filter := bson.M{"id": *server.ID}
+			database.UpdateToMongo(sysid_map, database.Database(), "sqlservers", filter)
 
-			r, err := json.Marshal(p)
+			response, err := json.Marshal(sysid_map)
 			if err != nil {
 				Logger.Error(err.Error())
 			}
-			httpResponse = append(httpResponse, string(r))
+
+			httpResponse = append(httpResponse, string(response))
 		}
 	}
 	if err := pager.Err(); err != nil {
@@ -732,12 +744,12 @@ func GetResourceByID(subid string, id string, resourceType string) (res []byte) 
 
 	sysid := PostApi(string(response))
 	json.Unmarshal(response, &data)
-	p := AddSysID(data, sysid)
+	sysid_map := AddSysID(data, sysid)
 
 	filter := bson.M{"id": *Result.ID}
-	database.UpdateToMongo(p, "service-discovery", resourceType, filter)
+	database.UpdateToMongo(sysid_map, "service-discovery", resourceType, filter)
 
-	r, err := json.Marshal(p)
+	r, err := json.Marshal(sysid_map)
 	if err != nil {
 		Logger.Error(err.Error())
 	}
@@ -745,6 +757,7 @@ func GetResourceByID(subid string, id string, resourceType string) (res []byte) 
 	return r
 }
 
+//Generic function
 func GetListOfResources(subid string, name string) (response string) {
 	cnt := 0
 
@@ -788,5 +801,4 @@ func GetResponseForAll(c *gin.Context, name string) {
 	id := helpers.SubscriptionID(credsid)
 	Logger.Info("sid:" + id)
 	c.Data(http.StatusOK, "application/json", []byte(GetListOfResources(id, name)))
-
 }
