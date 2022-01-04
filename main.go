@@ -4,23 +4,23 @@ import (
 	"service-discovery/controllers"
 	"service-discovery/database"
 	"service-discovery/env"
+	"service-discovery/middlewares"
 	"service-discovery/models"
-	"service-discovery/routes"
+	"service-discovery/server"
 )
+
+var Logger = middlewares.Logger()
 
 func main() {
 
-	port := env.GetEnvironmentVariable("PORT")
 	url := env.GetEnvironmentVariable("MONGO_URL")
 
 	database.ConnectToMongoDB(models.MongoCall{
 		DBURL: url,
 	})
-
 	controllers.ExecuteCronJob()
+	server.HttpsServer()
 
-	routes.NewRoutes()
-	routes.NewRoutes().Run("localhost:" + port)
 	database.DisconnectMongoDB()
 
 }
