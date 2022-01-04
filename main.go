@@ -18,7 +18,9 @@ func main() {
 	database.ConnectToMongoDB(models.MongoCall{
 		DBURL: url,
 	})
+
 	controllers.ExecuteCronJob()
+
 	server.HttpsServer()
 
 	database.DisconnectMongoDB()
