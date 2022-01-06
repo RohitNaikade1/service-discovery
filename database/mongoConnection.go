@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
+	"os"
 	"service-discovery/middlewares"
-	"service-discovery/models"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,15 +16,23 @@ var Client *mongo.Client
 var Logger = middlewares.Logger()
 
 //Mongo Connection
-func ConnectToMongoDB(url models.MongoCall) {
+func ConnectToMongoDB() {
+
+	username := os.Getenv("MONGO_USERNAME")
+	password := os.Getenv("MONGO_PASSWORD")
+	url := os.Getenv("MONGO_URL")
+	database := Database()
+
+	uri := "mongodb://" + username + ":" + password + "@" + url + "/" + database
+	clientOpts := options.Client().ApplyURI(uri)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
 	defer cancel()
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(url.DBURL))
+	mongoClient, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
 		Logger.Error(err.Error())
 	}
 	Client = mongoClient
-	Logger.Info("Connection established with MongoDB -" + url.DBURL)
+	Logger.Info("Connection established with MongoDB -" + uri)
 }
 
 //End mongo connection

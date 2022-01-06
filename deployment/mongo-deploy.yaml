@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sd-mongo-deployment
+  namespace: sd
+spec:
+  selector:
+    matchLabels:
+      app: sd-mongo
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sd-mongo
+    spec:
+      containers:
+        # by default, the image is pulled from docker hub
+        - image: mongo
+          name: mongo
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+          - mountPath: /data/db 
+            name: sd-mongo-pv-claim
+              
+      volumes:
+      - name: sd-mongo-pv-claim
+        persistentVolumeClaim:
+          claimName: sd-mongo-pv-claim
+      restartPolicy: Always
+    

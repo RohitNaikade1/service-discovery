@@ -1,13 +1,14 @@
 package database
 
 import (
+	"os"
 	"service-discovery/env"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func Database() (db string) {
-	db = env.GetEnvironmentVariable("DB")
+	db = os.Getenv("MONGO_DATABASE")
 	return db
 }
 

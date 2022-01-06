@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-sd-deployment
+  namespace:  sd
+  labels:
+    app: app-sd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-sd
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: disabled
+      labels:
+        app: app-sd
+    spec:
+      containers:
+        - image: 511980/custom-discovery:v3
+          imagePullPolicy: Never
+          name: app-sd
+          ports:
+            - containerPort: 8080
+          env: 
+            - name: MONGO_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: db-conf
+                  key: url
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials # Name of the Secret
+                  key: username   
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials 
+                  key: password 
+            - name: MONGO_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: database
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: admin-credentials # Name of the Secret
+                  key: username   
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: admin-credentials 
+                  key: password 
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: admin-credentials
+                  key: email
+
+          
