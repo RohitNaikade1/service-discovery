@@ -2,7 +2,7 @@ package database
 
 import (
 	"context"
-	"os"
+	"service-discovery/env"
 	"service-discovery/middlewares"
 	"time"
 
@@ -17,12 +17,10 @@ var Logger = middlewares.Logger()
 
 //Mongo Connection
 func ConnectToMongoDB() {
-
-	username := os.Getenv("MONGO_USERNAME")
-	password := os.Getenv("MONGO_PASSWORD")
-	url := os.Getenv("MONGO_URL")
+	username := "sdadmin"
+	password := "servicediscoverydev"
+	url := "localhost:27017"
 	database := Database()
-
 	uri := "mongodb://" + username + ":" + password + "@" + url + "/" + database
 	clientOpts := options.Client().ApplyURI(uri)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
@@ -47,15 +45,13 @@ func DisconnectMongoDB() {
 }
 
 // Validates Collection Exists or not - returns boolean value
-func ValidateCollection(db string, collection string) (result bool) {
-
-	destination := Client.Database(db)
+func ValidateCollection(collection string) (result bool) {
+	destination := Client.Database(env.MONGODB_DATABASE)
 	filter := bson.D{}
 	cursor, err := destination.ListCollectionNames(context.TODO(), filter)
 	if err != nil {
 		Logger.Error(err.Error())
 	}
-
 	result = false
 	for _, c := range cursor {
 		if c == collection {
@@ -63,13 +59,13 @@ func ValidateCollection(db string, collection string) (result bool) {
 			break
 		}
 	}
-
 	return result
 }
 
 //Validates document exists or not
-func ValidateDocument(db string, collection string, filter primitive.M) (result bool) {
-	destination := Client.Database(db).Collection(collection)
+func ValidateDocument(collection string, filter primitive.M) (result bool) {
+	Logger.Debug("FUNCENTRY")
+	destination := Client.Database(env.MONGODB_DATABASE).Collection(collection)
 	curser, err := destination.Find(context.TODO(), filter, options.Find().SetLimit(1))
 	if err != nil {
 		Logger.Error(err.Error())
@@ -80,75 +76,93 @@ func ValidateDocument(db string, collection string, filter primitive.M) (result 
 	if err != nil {
 		Logger.Error(err.Error())
 	}
-
 	count := len(results)
-
 	if count == 1 {
 		result = true
 	} else {
 		result = false
 	}
-
+	Logger.Debug("FUNCEXIT")
 	return result
 }
 
-//Get All Documents
-func GetAllDocuments(db string, collection string) (arr []primitive.M) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
-	defer cancel()
-	destination := Client.Database(db).Collection(collection)
-	cursor, err := destination.Find(ctx, bson.D{})
+//List of call the collections
+func ListCollectionNames() []string {
+	Logger.Debug("FUNCENTRY")
+	destination := Client.Database(env.MONGODB_DATABASE)
+	filter := bson.D{{}}
+	cursor, err := destination.ListCollectionNames(context.Background(), filter)
 	if err != nil {
 		Logger.Error(err.Error())
 	}
+	Logger.Debug("FUNCEXIT")
+	return cursor
+}
 
+func Insert(collection string, document interface{}) *mongo.InsertOneResult {
+	Logger.Debug("FUNCENTRY")
+	mongoCollection := Client.Database(env.MONGODB_DATABASE).Collection(collection)
+	result, err := mongoCollection.InsertOne(context.Background(), document)
+	if err != nil {
+		Logger.Error(err.Error())
+	}
+	Logger.Debug("FUNCEXIT")
+	return result
+}
+
+func Update(collection string, filter interface{}, update interface{}) *mongo.UpdateResult {
+	Logger.Debug("FUNCENTRY")
+	mongoCollection := Client.Database(env.MONGODB_DATABASE).Collection(collection)
+	result, err := mongoCollection.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		Logger.Error(err.Error())
+	}
+	Logger.Debug("FUNCEXIT")
+	return result
+}
+
+func Delete(collection string, filter primitive.M) (result *mongo.DeleteResult) {
+	Logger.Debug("FUNCENTRY")
+	mongoCollection := Client.Database(env.MONGODB_DATABASE).Collection(collection)
+	result, err := mongoCollection.DeleteOne(context.Background(), filter)
+	if err != nil {
+		Logger.Error(err.Error())
+	}
+	Logger.Debug("FUNCEXIT")
+	return result
+}
+
+func Read(collection string, filter interface{}) (result *mongo.SingleResult) {
+	Logger.Debug("FUNCENTRY")
+	mongoCollection := Client.Database(env.MONGODB_DATABASE).Collection(collection)
+	result = mongoCollection.FindOne(context.Background(), filter)
+	Logger.Debug("FUNCEXIT")
+	return result
+}
+
+func ReadAll(collection string) (arr []primitive.M) {
+	Logger.Debug("FUNCENTRY")
+	mongoCollection := Client.Database(env.MONGODB_DATABASE).Collection(collection)
+	cursor, err := mongoCollection.Find(context.Background(), bson.M{})
+	if err != nil {
+		Logger.Error(err.Error())
+	}
 	var results []bson.M
-	err = cursor.All(ctx, &results)
+	err = cursor.All(context.Background(), &results)
 	if err != nil {
 		Logger.Error(err.Error())
 	}
-
+	Logger.Debug("FUNCEXIT")
 	return results
 }
 
-func UpdateOne(db string, col string, filter primitive.M, update primitive.M) (response *mongo.UpdateResult, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
-	defer cancel()
-	collection := Client.Database(db).Collection(col)
-	res, err := collection.UpdateOne(ctx, filter, update)
-	return res, err
-}
-
-//If exists then update or else insert
-func UpdateToMongo(data interface{}, db string, c string, filter primitive.M) (result *mongo.SingleResult, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
-	defer cancel()
-	upsert := true
-	after := options.After
-	opt := options.FindOneAndUpdateOptions{
-		ReturnDocument: &after,
-		Upsert:         &upsert,
+func InsertOrUpdate(collection string, filter primitive.M, update primitive.M) (response interface{}) {
+	Logger.Debug("FUNCENTRY")
+	if ValidateDocument(collection, filter) {
+		response = Update(collection, filter, update)
+	} else {
+		response = Insert(collection, update)
 	}
-
-	update := bson.M{
-		"$set": data,
-	}
-	destination := Client.Database(db).Collection(c)
-	r := destination.FindOneAndUpdate(ctx, filter, update, &opt)
-	Logger.Info("Finished saving data.")
-	return r, err
-}
-
-//List of call the collections
-func ListCollectionNames(db string) []string {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //10 sec timeout
-	defer cancel()
-	destination := Client.Database(db)
-	filter := bson.D{{}}
-	cursor, err := destination.ListCollectionNames(ctx, filter)
-	if err != nil {
-		Logger.Error(err.Error())
-	}
-
-	return cursor
+	Logger.Debug("FUNCEXIT")
+	return response
 }

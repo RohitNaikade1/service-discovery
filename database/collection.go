@@ -1,52 +1,31 @@
 package database
 
 import (
-	"os"
 	"service-discovery/env"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func Database() (db string) {
-	db = os.Getenv("MONGO_DATABASE")
+	//	db = os.Getenv("MONGO_DATABASE")
+	db = "service-discovery"
 	return db
 }
 
-func UserCollectionName() (collection string) {
-	collectionName := env.GetEnvironmentVariable("USER_COLLECTION")
-	return collectionName
-}
-
-func CredentialCollectionName() (collection string) {
-	collectionName := env.GetEnvironmentVariable("CREDENTIAL_COLLECTION")
-	return collectionName
-}
-
-func RegistrationCollectionName() (collection string) {
-	collectionName := env.GetEnvironmentVariable("REGISTRATION_COLLECTION")
-	return collectionName
-}
-
 func UserCollection() (collection mongo.Collection) {
-	collectionName := UserCollectionName()
+	collectionName := env.USER_COLLECTION
 	collection = *Client.Database(Database()).Collection(collectionName)
 	return collection
 }
 
 func CredentialCollection() (collection mongo.Collection) {
-	collectionName := CredentialCollectionName()
+	collectionName := env.CREDENTIAL_COLLECTION
 	collection = *Client.Database(Database()).Collection(collectionName)
 	return collection
 }
 
 func RegistrationCollection() (collection mongo.Collection) {
-	collectionName := RegistrationCollectionName()
+	collectionName := env.REGISTRATION_COLLECTION
 	collection = *Client.Database(Database()).Collection(collectionName)
 	return collection
-}
-
-//Resource collections.
-func VirtualMachinesCollection() (collection string) {
-	collectionName := env.GetEnvironmentVariable("VIRTUAL_MACHINES_COLLECTION")
-	return collectionName
 }

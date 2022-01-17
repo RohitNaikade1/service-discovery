@@ -12,7 +12,7 @@ import (
 var Logger = middlewares.Logger()
 
 func HttpsServer() {
-	port := env.GetEnvironmentVariable("PORT")
+	port := env.PORT
 
 	addr := flag.String("addr", ":"+port, "HTTPS network address")
 	certFile := flag.String("certfile", "server.crt", "certificate file")

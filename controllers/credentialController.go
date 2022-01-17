@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"service-discovery/database"
+	"service-discovery/env"
 	"service-discovery/helpers"
 	"service-discovery/models"
 	"strings"
@@ -17,12 +18,12 @@ import (
 )
 
 func GetAllCredentials(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username := c.GetString("username")
 	password := c.GetString("password")
 	role := c.GetString("role")
-
 	var arr []string
-	result := database.GetAllDocuments(database.Database(), database.CredentialCollectionName())
+	result := database.ReadAll(env.CREDENTIAL_COLLECTION)
 	for _, creds := range result {
 		out, err := json.Marshal(creds)
 		if err != nil {
@@ -31,27 +32,24 @@ func GetAllCredentials(c *gin.Context) {
 		arr = append(arr, string(out))
 	}
 	stringByte := "[" + strings.Join(arr, " ,") + "]"
-
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-
 	if sysAdmin || appUser.Role == "admin" {
 		c.Data(http.StatusOK, "application/json", []byte(stringByte))
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
+	Logger.Debug("FUNCEXIT")
 }
 
 func CreateCredentials(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username := c.GetString("username")
 	password := c.GetString("password")
 	role := c.GetString("role")
-
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-
 	var cred models.Credentials
-
 	cred.ID = primitive.NewObjectID().Hex()
 
 	err := c.ShouldBind(&cred)
@@ -88,9 +86,11 @@ func CreateCredentials(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"status": "Unauthorized"})
 		}
 	}
+	Logger.Debug("FUNCEXIT")
 }
 
 func GetCredential(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username := c.GetString("username")
 	password := c.GetString("password")
 	role := c.GetString("role")
@@ -103,8 +103,8 @@ func GetCredential(c *gin.Context) {
 	cred.CredsID = c.Param("credsid")
 
 	collection := database.CredentialCollection()
-	if database.ValidateCollection(database.Database(), database.CredentialCollectionName()) {
-		if database.ValidateDocument(database.Database(), database.CredentialCollectionName(), bson.M{"credsid": cred.CredsID}) {
+	if database.ValidateCollection(env.CREDENTIAL_COLLECTION) {
+		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"credsid": cred.CredsID}) {
 			err := collection.FindOne(context.TODO(), bson.M{"credsid": cred.CredsID}).Decode(&cred)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -122,6 +122,7 @@ func GetCredential(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusNotFound, gin.H{"status": "Data not found"})
 	}
+	Logger.Debug("FUNCEXIT")
 }
 
 func UpdateCredentials(c *gin.Context) {
@@ -139,8 +140,8 @@ func UpdateCredentials(c *gin.Context) {
 
 	credentials := helpers.FindByCredsID(id)
 
-	if database.ValidateCollection(database.Database(), database.CredentialCollectionName()) {
-		if database.ValidateDocument(database.Database(), database.CredentialCollectionName(), bson.M{"credsid": cred.CredsID}) {
+	if database.ValidateCollection(env.CREDENTIAL_COLLECTION) {
+		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"credsid": cred.CredsID}) {
 			err := c.ShouldBind(&cred)
 			if err != nil {
 				fmt.Println(err)

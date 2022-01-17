@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"service-discovery/database"
+	"service-discovery/env"
 	"service-discovery/helpers"
 	"service-discovery/models"
 	"strings"
@@ -53,8 +54,8 @@ func GetRegistration(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	if database.ValidateCollection(database.Database(), database.RegistrationCollectionName()) {
-		if database.ValidateDocument(database.Database(), database.RegistrationCollectionName(), bson.M{"_id": registration.ID}) {
+	if database.ValidateCollection(env.REGISTRATION_COLLECTION) {
+		if database.ValidateDocument(env.REGISTRATION_COLLECTION, bson.M{"_id": registration.ID}) {
 			if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 				c.JSON(http.StatusOK, registration)
 			} else {
@@ -78,7 +79,7 @@ func GetRegistrations(c *gin.Context) {
 
 	var arr []string
 
-	result := database.GetAllDocuments(database.Database(), database.RegistrationCollectionName())
+	result := database.ReadAll(env.REGISTRATION_COLLECTION)
 
 	for _, data := range result {
 		out, err := json.Marshal(data)
@@ -123,7 +124,7 @@ func CreateRegistration(c *gin.Context) {
 	fmt.Println(registration.Name, " ", registration.Accounts.CredsId)
 
 	if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
-		if database.ValidateDocument(database.Database(), database.RegistrationCollectionName(), bson.M{"credsid": registration.Accounts.CredsId, "name": registration.Name}) {
+		if database.ValidateDocument(env.REGISTRATION_COLLECTION, bson.M{"credsid": registration.Accounts.CredsId, "name": registration.Name}) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "credsid or name used already"})
 		} else {
 			result, err := collection.InsertOne(context.Background(), registration)

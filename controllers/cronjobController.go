@@ -97,56 +97,6 @@ func GetResourceData(resource string, credsid string, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-/*
-func CronTask(credsid string) {
-	start := time.Now()
-	var r models.Registration
-
-	fmt.Println(credsid)
-
-	col := database.RegistrationCollection()
-	err := col.FindOne(context.TODO(), bson.M{"accounts.credsid": credsid}).Decode(&r)
-
-	if err != nil {
-		fmt.Println(err.Error())
-	} else {
-
-		for i := 0; i < len(r.Categories); i++ {
-
-			for j := 0; j < len(r.Categories[i].Resource_info.Resources); j++ {
-
-				x := r.Categories[i].Resource_info.Resources[j]
-				fmt.Println(x)
-
-				url := "http://localhost:8080/servicediscovery/cloudresources/azure/service/" + x + "?credsid=" + credsid
-				method := "GET"
-
-				client := &http.Client{}
-				req, err := http.NewRequest(method, url, nil)
-				if err != nil {
-					fmt.Println(err)
-				}
-
-				res, err := client.Do(req)
-				if err != nil {
-					fmt.Println(err)
-				}
-				defer res.Body.Close()
-
-				body, err := ioutil.ReadAll(res.Body)
-				if err != nil {
-					fmt.Println(err)
-				}
-				fmt.Println(string(body))
-
-			}
-
-		}
-	}
-	elapsed := time.Since(start)
-	log.Printf("Sync took %s", elapsed)
-}*/
-
 type Set_DT struct {
 	ti string
 }
@@ -397,7 +347,6 @@ func Task(c *gin.Context) {
 }
 
 //*****change active status *****//
-var db = database.Database()
 
 func GetOSType(data interface{}) string {
 	p, err := json.Marshal(data)
@@ -417,7 +366,7 @@ func Collections(creds string) {
 	start := time.Now()
 	var wg = sync.WaitGroup{}
 
-	arr := database.ListCollectionNames(db)
+	arr := database.ListCollectionNames()
 	//fmt.Println(len(arr))
 	wg.Add(len(arr))
 	for i := 0; i < len(arr); i++ {
@@ -439,7 +388,7 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 	}
 
 	client := armresources.NewResourcesClient(helpers.SubscriptionID(creds), cred, nil)
-	results := database.GetAllDocuments(db, collection)
+	results := database.ReadAll(collection)
 	Logger.Info(collection + " Query Reult:")
 	//if collection == database.UserCollectionName() || collection == database.CredentialCollectionName() || collection == database.RegistrationCollectionName() {
 	//	fmt.Println("not a resource")
@@ -490,7 +439,7 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 				filter := bson.M{"name": n}
 				data := bson.M{"status": "inactive"}
 				update := bson.M{"$set": data}
-				database.UpdateOne(db, collection, filter, update)
+				database.Update(collection, filter, update)
 
 			}
 
@@ -503,7 +452,7 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 			json.Unmarshal(out, &d)
 			filter := bson.M{"name": n}
 			update := bson.M{"$set": d}
-			database.UpdateOne(db, collection, filter, update)
+			database.Update(collection, filter, update)
 		}
 
 	}

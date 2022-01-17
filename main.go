@@ -11,7 +11,7 @@ var Logger = middlewares.Logger()
 
 func main() {
 
-	//url := env.GetEnvironmentVariable("MONGO_URL")
+	Logger.Debug("Starting application...")
 
 	database.ConnectToMongoDB()
 
@@ -20,5 +20,7 @@ func main() {
 	server.HttpsServer()
 
 	database.DisconnectMongoDB()
+
+	Logger.Debug("Exit..")
 
 }

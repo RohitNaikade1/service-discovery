@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"service-discovery/database"
+	"service-discovery/env"
 	"service-discovery/models"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,9 +12,9 @@ import (
 
 func SubscriptionID(credsid string) (subid string) {
 	var cred models.Credentials
-	if database.ValidateCollection(database.Database(), database.CredentialCollectionName()) {
+	if database.ValidateCollection(env.CREDENTIAL_COLLECTION) {
 		Logger.Info("Collection exists")
-		if database.ValidateDocument(database.Database(), database.CredentialCollectionName(), bson.M{"credsid": credsid}) {
+		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"credsid": credsid}) {
 			Logger.Info("Documents exists")
 			collection := database.CredentialCollection()
 			err := collection.FindOne(context.TODO(), bson.M{"credsid": credsid}).Decode(&cred)

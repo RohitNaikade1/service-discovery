@@ -9,7 +9,7 @@ import (
 )
 
 func FetchDataFromDatabase() {
-	arr := database.ListCollectionNames(database.Database())
+	arr := database.ListCollectionNames()
 	length := len(arr)
 	for i := 0; i < length; i++ {
 		fmt.Println(arr[i])
@@ -19,7 +19,7 @@ func FetchDataFromDatabase() {
 
 func GetDataFromDatabase(collection string, id string, data []byte) (response bool) {
 	//var s []string
-	arr := database.GetAllDocuments(database.Database(), collection)
+	arr := database.ReadAll(collection)
 	for _, doc := range arr {
 		//fmt.Println(doc)
 		if doc["id"] == id {
