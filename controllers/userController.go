@@ -21,6 +21,7 @@ func SignUp(c *gin.Context) {
 	username := c.GetString("username")
 	userPassword := c.GetString("password")
 	role := c.GetString("role")
+
 	sysAdmin := VerifyParentAdmin(username, userPassword, role)
 	appUser := GetCurrentLoggedInUser(username, userPassword, role)
 
@@ -54,6 +55,7 @@ func SignUp(c *gin.Context) {
 
 func Login(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
+	c.Header("Access-Control-Allow-Origin", "*")
 	var login models.LoginDetails
 	var user models.User
 	err := c.BindJSON(&login)

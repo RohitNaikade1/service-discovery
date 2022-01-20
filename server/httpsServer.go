@@ -7,6 +7,8 @@ import (
 	"service-discovery/env"
 	"service-discovery/middlewares"
 	"service-discovery/routes"
+
+	"github.com/rs/cors"
 )
 
 var Logger = middlewares.Logger()
@@ -21,10 +23,12 @@ func HttpsServer() {
 
 	router := routes.NewRoutes()
 
+	r := cors.AllowAll().Handler(router.Router)
+
 	//	routes.NewRoutes().Run("localhost:" + port)
 	srv := &http.Server{
 		Addr:    *addr,
-		Handler: router.Router,
+		Handler: r,
 		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS13,
 			PreferServerCipherSuites: true,

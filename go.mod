@@ -12,6 +12,7 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-co-op/gocron v1.11.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/rs/cors v1.8.2
 	github.com/sadlil/gologger v0.0.0-20180131031757-2507bf651df8
 	github.com/spf13/viper v1.9.0
 	go.mongodb.org/mongo-driver v1.8.0

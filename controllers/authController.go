@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	log "service-discovery/middlewares"
 	"service-discovery/models"
@@ -16,7 +17,9 @@ var (
 )
 
 func Authenticate(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	bearer := c.Request.Header.Get("Authorization")
+	fmt.Println("Bearer: ", bearer)
 	if bearer == "" {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "No authorization header provided"})
 		c.Abort()
@@ -28,7 +31,7 @@ func Authenticate(c *gin.Context) {
 			return
 		}
 		token := split[1]
-
+		fmt.Println(token)
 		claims, err := ValidateToken(token)
 		if err != "" {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err})
@@ -40,10 +43,11 @@ func Authenticate(c *gin.Context) {
 			c.Next()
 		}
 	}
-
+	Logger.Debug("FUNCEXIT")
 }
 
 func ValidateToken(signedToken string) (claim *models.Claims, result string) {
+	Logger.Debug("FUNCENTRY")
 	claims := &models.Claims{}
 	token, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(jwtKey), nil
@@ -61,5 +65,6 @@ func ValidateToken(signedToken string) (claim *models.Claims, result string) {
 	if claims.ExpiresAt < time.Now().Unix() {
 		result = "token has expired"
 	}
+	Logger.Debug("FUNCEXIT")
 	return claims, result
 }

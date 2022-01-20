@@ -16,7 +16,7 @@ func GetCurrentLoggedInUser(username string, password string, role string) (user
 }
 
 func VerifyParentAdmin(username string, password string, role string) (result bool) {
-	if username == env.GetEnvironmentVariable("ADMIN_USERNAME") && password == env.GetEnvironmentVariable("ADMIN_PASSWORD") && role == "admin" {
+	if username == env.ADMIN_USERNAME && password == env.ADMIN_PASSWORD && role == "admin" {
 		result = true
 	} else {
 		result = false

@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"net/http"
-	"os"
+	"service-discovery/env"
 	log "service-discovery/middlewares"
 	"service-discovery/models"
 	"time"
@@ -17,8 +17,8 @@ func GenerateAdminToken(c *gin.Context) {
 	expirationTime := time.Now().Add(time.Minute * 30)
 
 	claims := &models.Claims{
-		Username: os.Getenv("ADMIN_USERNAME"),
-		Password: os.Getenv("ADMIN_PASSWORD"),
+		Username: env.ADMIN_USERNAME,
+		Password: env.ADMIN_PASSWORD,
 		Role:     "admin",
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
