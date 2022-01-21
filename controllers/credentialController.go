@@ -52,6 +52,12 @@ func CreateCredentials(c *gin.Context) {
 	var cred models.Credentials
 	cred.ID = primitive.NewObjectID().Hex()
 
+	if sysAdmin {
+		cred.User.ID = "1"
+	} else {
+		cred.User.ID = appUser.ID
+	}
+
 	err := c.ShouldBind(&cred)
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Invalid json provided"})
@@ -70,8 +76,6 @@ func CreateCredentials(c *gin.Context) {
 	} else if cred.SubscriptionID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
 	} else if cred.TenantID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
-	} else if cred.User.ID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
 	} else {
 		collection := database.CredentialCollection()
@@ -177,22 +181,16 @@ func DeleteCredentials(c *gin.Context) {
 	role := c.GetString("role")
 	username := c.GetString("username")
 	password := c.GetString("password")
-
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-
 	var cred models.Credentials
-
 	cred.ID = c.Param("credsid")
-
 	credential := helpers.FindByCredsID(cred.ID)
 
-	user := helpers.GetUser(credential.User.ID)
-
+	//user := helpers.GetUser(credential.User.ID)
 	collection := database.CredentialCollection()
-
-	if sysAdmin || appUser.Role == "admin" || appUser.ID == user.ID {
-		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": cred.ID})
+	if sysAdmin || appUser.Role == "admin" || appUser.ID == credential.User.ID {
+		result, err := collection.DeleteOne(context.Background(), bson.M{"credsid": cred.CredsID})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			c.Abort()

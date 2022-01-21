@@ -4,8 +4,8 @@ import "github.com/golang-jwt/jwt"
 
 type User struct {
 	ID         string `bson:"_id" json:"_id,omitempty"`
-	First_Name string `json:"first_name,omitempty"`
-	Last_Name  string `json:"last_name,omitempty"`
+	First_Name string `json:"firstname,omitempty"`
+	Last_Name  string `json:"lastname,omitempty"`
 	UserName   string `json:"username,omitempty"`
 	Password   string `json:"password,omitempty"`
 	Email      string `json:"email,omitempty"`

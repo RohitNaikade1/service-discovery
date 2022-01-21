@@ -41,6 +41,7 @@ func SignUp(c *gin.Context) {
 		user.Created_At = time.Now().Local().String()
 		user.Updated_At = time.Now().Local().String()
 
+		Logger.Info("firstname " + user.First_Name + "lastname: " + user.Last_Name + user.UserName + user.Password + user.Email + user.Role)
 		if database.ValidateDocument(env.USER_COLLECTION, bson.M{"email": user.Email, "username": user.UserName}) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "username or email already exists"})
 		} else {
@@ -86,6 +87,8 @@ func Login(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect password"})
 		}
+	} else if login.UserName == env.ADMIN_USERNAME && login.Password == env.ADMIN_PASSWORD {
+		GenerateAdminToken(c)
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid username or password"})
 	}
