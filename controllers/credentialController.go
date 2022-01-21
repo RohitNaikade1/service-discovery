@@ -139,18 +139,18 @@ func UpdateCredentials(c *gin.Context) {
 
 	var cred models.Credentials
 
-	cred.CredsID = c.Param("credsid")
+	cred.ID = c.Param("id")
 	id := cred.CredsID
 
 	credentials := helpers.FindByCredsID(id)
 
 	if database.ValidateCollection(env.CREDENTIAL_COLLECTION) {
-		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"credsid": cred.CredsID}) {
+		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"_id": cred.ID}) {
 			err := c.ShouldBind(&cred)
 			if err != nil {
 				fmt.Println(err)
 			}
-
+			cred.User.ID = credentials.User.ID
 			user := helpers.GetUser(credentials.User.ID)
 
 			filter := bson.M{"credsid": cred.CredsID}
@@ -184,14 +184,14 @@ func DeleteCredentials(c *gin.Context) {
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	var cred models.Credentials
-	cred.CredsID = c.Param("credsid")
+	cred.ID = c.Param("id")
 	credential := helpers.FindByCredsID(cred.ID)
 
 	//user := helpers.GetUser(credential.User.ID)
 	collection := database.CredentialCollection()
 	Logger.Info(cred.CredsID)
 	if sysAdmin || appUser.Role == "admin" || appUser.ID == credential.User.ID {
-		result, err := collection.DeleteOne(context.Background(), bson.M{"credsid": cred.CredsID})
+		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": cred.ID})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			c.Abort()

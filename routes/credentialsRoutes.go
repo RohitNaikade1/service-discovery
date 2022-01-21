@@ -12,8 +12,8 @@ func (r routes) AddCredentialsRoutes(rg *gin.RouterGroup) {
 		creds.GET("credentials", controllers.Authenticate, controllers.GetAllCredentials)
 		creds.GET("credentials/:credsid", controllers.Authenticate, controllers.GetCredential)
 		creds.POST("credentials", controllers.Authenticate, controllers.CreateCredentials)
-		creds.PUT("credentials/:credsid", controllers.Authenticate, controllers.UpdateCredentials)
-		creds.DELETE("credentials/:credsid", controllers.Authenticate, controllers.DeleteCredentials)
+		creds.PUT("credentials/:id", controllers.Authenticate, controllers.UpdateCredentials)
+		creds.DELETE("credentials/:id", controllers.Authenticate, controllers.DeleteCredentials)
 	}
 
 }
