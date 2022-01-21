@@ -440,9 +440,7 @@ func GetResponce(c *gin.Context, fn func(id string) string) {
 
 //Used in single resource api
 func GetResourceResponce(c *gin.Context, fn func(id string) string) {
-	role := c.GetString("role")
-	username := c.GetString("username")
-	password := c.GetString("password")
+	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	credsid := c.Query("credsid")

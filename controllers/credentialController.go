@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"context"
-	"encoding/json"
 	"net/http"
 	"service-discovery/database"
 	"service-discovery/env"
@@ -18,17 +16,12 @@ import (
 
 func GetAllCredentials(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	username := c.GetString("username")
-	password := c.GetString("password")
-	role := c.GetString("role")
+	username, password, role := helpers.GetTokenValues(c)
 	var arr []string
 	result := database.ReadAll(env.CREDENTIAL_COLLECTION)
 	for _, creds := range result {
-		out, err := json.Marshal(creds)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err.Error())
-		}
-		arr = append(arr, string(out))
+		response := helpers.Encode(creds)
+		arr = append(arr, string(response))
 	}
 	stringByte := "[" + strings.Join(arr, " ,") + "]"
 	sysAdmin := VerifyParentAdmin(username, password, role)
@@ -43,31 +36,23 @@ func GetAllCredentials(c *gin.Context) {
 
 func CreateCredentials(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	username := c.GetString("username")
-	password := c.GetString("password")
-	role := c.GetString("role")
+	var cred models.Credentials
+	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-	var cred models.Credentials
 	cred.ID = primitive.NewObjectID().Hex()
-
 	if sysAdmin {
 		cred.User.ID = "1"
 	} else {
 		cred.User.ID = appUser.ID
 	}
-
 	err := c.ShouldBind(&cred)
-	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Invalid json provided"})
-	}
-
+	helpers.PrintError(err)
 	dt := time.Now().Local()
 	str := cred.Provider + "-" + dt.Format("02012006150405")
 	cred.CredsID = str
 	cred.Created_At = dt.String()
 	cred.Updated_At = time.Now().Local().String()
-
 	if cred.UserName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
 	} else if cred.Provider == "" {
@@ -77,14 +62,10 @@ func CreateCredentials(c *gin.Context) {
 	} else if cred.TenantID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "Bad Request", "error": "Enter all the required details"})
 	} else {
-		collection := database.CredentialCollection()
 		if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
-			result, err := collection.InsertOne(context.Background(), cred)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			} else {
-				c.JSON(http.StatusOK, gin.H{"status": "inserted", "id": result.InsertedID})
-			}
+			result := database.Insert(env.CREDENTIAL_COLLECTION, cred)
+			c.JSON(http.StatusOK, gin.H{"status": "inserted", "inserted id": result.InsertedID})
+			Logger.Info("Inserted")
 		} else {
 			c.JSON(http.StatusUnauthorized, gin.H{"status": "Unauthorized"})
 		}
@@ -94,9 +75,7 @@ func CreateCredentials(c *gin.Context) {
 
 func GetCredential(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	username := c.GetString("username")
-	password := c.GetString("password")
-	role := c.GetString("role")
+	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	var cred models.Credentials
@@ -104,9 +83,9 @@ func GetCredential(c *gin.Context) {
 	Logger.Info("Param: " + id)
 	if database.ValidateCollection(env.CREDENTIAL_COLLECTION) {
 		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"_id": id}) {
-			err := database.Read(env.CREDENTIAL_COLLECTION, bson.M{"_id": id}).Decode(&cred)
-			helpers.PrintError(err)
 			if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
+				err := database.Read(env.CREDENTIAL_COLLECTION, bson.M{"_id": id}).Decode(&cred)
+				helpers.PrintError(err)
 				c.JSON(http.StatusOK, cred)
 			} else {
 				c.JSON(http.StatusUnauthorized, gin.H{"status": "Unauthorized"})
@@ -122,16 +101,13 @@ func GetCredential(c *gin.Context) {
 
 func UpdateCredentials(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	username := c.GetString("username")
-	password := c.GetString("password")
-	role := c.GetString("role")
+	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	var cred models.Credentials
 	id := c.Param("id")
 	credentials := helpers.GetCredentialData(id)
 	Logger.Info(credentials.ID)
-
 	if database.ValidateCollection(env.CREDENTIAL_COLLECTION) {
 		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"_id": id}) {
 			err := c.ShouldBind(&cred)
@@ -155,11 +131,8 @@ func UpdateCredentials(c *gin.Context) {
 
 func DeleteCredentials(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	role := c.GetString("role")
-	username := c.GetString("username")
-	password := c.GetString("password")
+	username, password, role := helpers.GetTokenValues(c)
 	id := c.Param("id")
-	Logger.Info("Param: " + id)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	credentials := helpers.GetCredentialData(id)

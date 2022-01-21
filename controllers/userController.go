@@ -18,13 +18,9 @@ import (
 
 func SignUp(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	username := c.GetString("username")
-	userPassword := c.GetString("password")
-	role := c.GetString("role")
-
-	sysAdmin := VerifyParentAdmin(username, userPassword, role)
-	appUser := GetCurrentLoggedInUser(username, userPassword, role)
-
+	username, password, role := helpers.GetTokenValues(c)
+	sysAdmin := VerifyParentAdmin(username, password, role)
+	appUser := GetCurrentLoggedInUser(username, password, role)
 	if sysAdmin || appUser.Role == "admin" {
 		var user models.User
 		user.ID = primitive.NewObjectID().Hex()
@@ -32,16 +28,15 @@ func SignUp(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Invalid json provided"})
 		}
-		password := user.Password
-		hashPassword, err := helpers.HashPassword(password)
+		userPassword := user.Password
+		hashPassword, err := helpers.HashPassword(userPassword)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 		user.Password = hashPassword
 		user.Created_At = time.Now().Local().String()
 		user.Updated_At = time.Now().Local().String()
-
-		Logger.Info("firstname " + user.First_Name + "lastname: " + user.Last_Name + user.UserName + user.Password + user.Email + user.Role)
+		Logger.Info("firstname " + user.FirstName + "lastname: " + user.LastName + user.UserName + user.Password + user.Email + user.Role)
 		if database.ValidateDocument(env.USER_COLLECTION, bson.M{"email": user.Email, "username": user.UserName}) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "username or email already exists"})
 		} else {
@@ -63,14 +58,10 @@ func Login(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
-	//collection := database.UserCollection()
 	if database.ValidateDocument(env.USER_COLLECTION, bson.M{"username": login.UserName}) {
-		//collection.FindOne(context.Background(), bson.M{"username": login.UserName}).Decode(&user)
 		database.Read(env.USER_COLLECTION, bson.M{"username": login.UserName}).Decode(&user)
 		match := helpers.CheckPasswordHash(login.Password, user.Password)
-
 		if match {
-
 			expirationTime := time.Now().Add(time.Minute * 30)
 			claims := &models.Claims{
 				ID:       user.ID,
@@ -98,9 +89,7 @@ func Login(c *gin.Context) {
 
 func GetUsers(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	username := c.GetString("username")
-	password := c.GetString("password")
-	role := c.GetString("role")
+	username, password, role := helpers.GetTokenValues(c)
 	var arr []string
 	if database.ValidateCollection(env.USER_COLLECTION) {
 		results := database.ReadAll(env.USER_COLLECTION)
@@ -124,27 +113,24 @@ func GetUsers(c *gin.Context) {
 
 func GetUser(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	username := c.GetString("username")
-	password := c.GetString("password")
-	role := c.GetString("role")
+	username, password, role := helpers.GetTokenValues(c)
 	var user models.User
 	id := c.Param("id")
-	database.Read(env.USER_COLLECTION, bson.M{"_id": id}).Decode(&user)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	if sysAdmin || appUser.Role == "admin" || appUser.ID == id {
+		err := database.Read(env.USER_COLLECTION, bson.M{"_id": id}).Decode(&user)
+		helpers.PrintError(err)
 		c.JSON(http.StatusOK, user)
 	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized to access this user details."})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
 	Logger.Debug("FUNCEXIT")
 }
 
 func UpdateUser(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	username := c.GetString("username")
-	password := c.GetString("password")
-	role := c.GetString("role")
+	username, password, role := helpers.GetTokenValues(c)
 	var user models.User
 	user.ID = c.Param("id")
 	err := c.ShouldBind(&user)
@@ -161,12 +147,12 @@ func UpdateUser(c *gin.Context) {
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	if sysAdmin || appUser.Role == "admin" {
-		update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
+		update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
 		response := database.Update(env.USER_COLLECTION, filter, update)
 		c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": user})
 	} else {
 		if appUser.ID == user.ID {
-			update := bson.M{"$set": bson.M{"first_name": user.First_Name, "last_name": user.Last_Name, "password": user.Password, "email": user.Email, "updated_at": time.Now().Local().String()}}
+			update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": user.Password, "email": user.Email, "updated_at": time.Now().Local().String()}}
 			response := database.Update(env.USER_COLLECTION, filter, update)
 			c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": user})
 		} else {
@@ -178,9 +164,7 @@ func UpdateUser(c *gin.Context) {
 
 func DeleteUser(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
-	role := c.GetString("role")
-	username := c.GetString("username")
-	password := c.GetString("password")
+	username, password, role := helpers.GetTokenValues(c)
 	id := c.Param("id")
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)

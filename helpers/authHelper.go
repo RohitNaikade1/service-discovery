@@ -6,6 +6,7 @@ import (
 	"service-discovery/middlewares"
 	"service-discovery/models"
 
+	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -82,4 +83,11 @@ func VerifyUser(role string, username string, password string) (result bool) {
 		result = false
 	}
 	return result
+}
+
+func GetTokenValues(c *gin.Context) (username string, password string, role string) {
+	username = c.GetString("username")
+	password = c.GetString("password")
+	role = c.GetString("role")
+	return username, password, role
 }
