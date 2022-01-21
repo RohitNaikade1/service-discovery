@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"service-discovery/database"
 	"service-discovery/env"
@@ -98,28 +97,20 @@ func GetCredential(c *gin.Context) {
 	username := c.GetString("username")
 	password := c.GetString("password")
 	role := c.GetString("role")
-
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-
 	var cred models.Credentials
-
-	cred.CredsID = c.Param("credsid")
-
-	collection := database.CredentialCollection()
+	id := c.Param("credsid")
+	Logger.Info("Param: " + id)
 	if database.ValidateCollection(env.CREDENTIAL_COLLECTION) {
-		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"credsid": cred.CredsID}) {
-			err := collection.FindOne(context.TODO(), bson.M{"credsid": cred.CredsID}).Decode(&cred)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			}
-
+		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"_id": id}) {
+			err := database.Read(env.CREDENTIAL_COLLECTION, bson.M{"_id": id}).Decode(&cred)
+			helpers.PrintError(err)
 			if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 				c.JSON(http.StatusOK, cred)
 			} else {
 				c.JSON(http.StatusUnauthorized, gin.H{"status": "Unauthorized"})
 			}
-
 		} else {
 			c.JSON(http.StatusNotFound, gin.H{"status": "Credentials not found"})
 		}
@@ -130,45 +121,30 @@ func GetCredential(c *gin.Context) {
 }
 
 func UpdateCredentials(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username := c.GetString("username")
 	password := c.GetString("password")
 	role := c.GetString("role")
-
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-
 	var cred models.Credentials
-
-	cred.ID = c.Param("id")
-	id := cred.CredsID
-
-	credentials := helpers.FindByCredsID(id)
+	id := c.Param("id")
+	credentials := helpers.GetCredentialData(id)
+	Logger.Info(credentials.ID)
 
 	if database.ValidateCollection(env.CREDENTIAL_COLLECTION) {
-		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"_id": cred.ID}) {
+		if database.ValidateDocument(env.CREDENTIAL_COLLECTION, bson.M{"_id": id}) {
 			err := c.ShouldBind(&cred)
-			if err != nil {
-				fmt.Println(err)
-			}
+			helpers.PrintError(err)
 			cred.User.ID = credentials.User.ID
-			user := helpers.GetUser(credentials.User.ID)
-
-			filter := bson.M{"credsid": cred.CredsID}
+			filter := bson.M{"_id": id}
 			update := bson.M{"$set": bson.M{"provider": cred.Provider, "subscriptionid": cred.SubscriptionID, "tenantid": cred.TenantID, "username": cred.UserName, "updated_at": time.Now().Local().String()}}
-
-			collection := database.CredentialCollection()
-
-			if sysAdmin || appUser.Role == "admin" || appUser.ID == user.ID {
-				response, err := collection.UpdateOne(context.Background(), filter, update)
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-					c.Abort()
-				}
+			if sysAdmin || appUser.Role == "admin" || appUser.ID == credentials.User.ID {
+				response := database.Update(env.CREDENTIAL_COLLECTION, filter, update)
 				c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": cred})
 			} else {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			}
-
 		} else {
 			c.JSON(http.StatusNotFound, gin.H{"status": "Credentials not found"})
 		}
@@ -178,26 +154,23 @@ func UpdateCredentials(c *gin.Context) {
 }
 
 func DeleteCredentials(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	role := c.GetString("role")
 	username := c.GetString("username")
 	password := c.GetString("password")
+	id := c.Param("id")
+	Logger.Info("Param: " + id)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-	var cred models.Credentials
-	cred.ID = c.Param("id")
-	credential := helpers.FindByCredsID(cred.ID)
-
-	//user := helpers.GetUser(credential.User.ID)
-	collection := database.CredentialCollection()
-	Logger.Info(cred.CredsID)
-	if sysAdmin || appUser.Role == "admin" || appUser.ID == credential.User.ID {
-		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": cred.ID})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			c.Abort()
-		}
-		c.JSON(http.StatusOK, gin.H{"status": "Deleted", "Deleted Count": result.DeletedCount})
+	credentials := helpers.GetCredentialData(id)
+	user := helpers.GetUser(credentials.User.ID)
+	if sysAdmin || appUser.Role == "admin" || appUser.Role == user.Role {
+		Logger.Info("ID: " + credentials.ID + " CredsID: " + credentials.CredsID)
+		result := database.Delete(env.CREDENTIAL_COLLECTION, bson.M{"_id": id})
+		c.JSON(http.StatusOK, gin.H{"Deleted Count": result.DeletedCount, "Data": credentials})
 	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		Logger.Info("Not authorized")
+		c.JSON(http.StatusUnauthorized, "Unauthorized")
 	}
+	Logger.Debug("FUNCEXIT")
 }

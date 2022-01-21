@@ -32,11 +32,8 @@ func SubscriptionID(credsid string) (subid string) {
 	return subid
 }
 
-func FindByCredsID(credsid string) (cred models.Credentials) {
-	collection := database.CredentialCollection()
-	err := collection.FindOne(context.Background(), bson.M{"credsid": credsid}).Decode(&cred)
-	if err != nil {
-		Logger.Error(err.Error())
-	}
+func GetCredentialData(id string) (cred models.Credentials) {
+	err := database.Read(env.CREDENTIAL_COLLECTION, bson.M{"_id": id}).Decode(&cred)
+	PrintError(err)
 	return cred
 }

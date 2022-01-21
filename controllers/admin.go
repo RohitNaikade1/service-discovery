@@ -17,6 +17,7 @@ func GenerateAdminToken(c *gin.Context) {
 	expirationTime := time.Now().Add(time.Minute * 30)
 
 	claims := &models.Claims{
+		ID:       "1",
 		Username: env.ADMIN_USERNAME,
 		Password: env.ADMIN_PASSWORD,
 		Role:     "admin",

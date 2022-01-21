@@ -20,6 +20,7 @@ type LoginDetails struct {
 }
 
 type Claims struct {
+	ID       string `bson:"_id" json:"_id,omitempty"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Role     string `json:"role"`

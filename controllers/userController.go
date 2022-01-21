@@ -73,6 +73,7 @@ func Login(c *gin.Context) {
 
 			expirationTime := time.Now().Add(time.Minute * 30)
 			claims := &models.Claims{
+				ID:       user.ID,
 				Username: user.UserName,
 				Password: user.Password,
 				Role:     user.Role,

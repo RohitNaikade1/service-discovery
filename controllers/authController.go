@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	log "service-discovery/middlewares"
 	"service-discovery/models"
@@ -19,7 +18,7 @@ var (
 func Authenticate(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
 	bearer := c.Request.Header.Get("Authorization")
-	fmt.Println("Bearer: ", bearer)
+	Logger.Info("Bearer: " + bearer)
 	if bearer == "" {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "No authorization header provided"})
 		c.Abort()
@@ -31,7 +30,6 @@ func Authenticate(c *gin.Context) {
 			return
 		}
 		token := split[1]
-		fmt.Println(token)
 		claims, err := ValidateToken(token)
 		if err != "" {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err})
