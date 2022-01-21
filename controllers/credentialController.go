@@ -184,11 +184,12 @@ func DeleteCredentials(c *gin.Context) {
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	var cred models.Credentials
-	cred.ID = c.Param("credsid")
+	cred.CredsID = c.Param("credsid")
 	credential := helpers.FindByCredsID(cred.ID)
 
 	//user := helpers.GetUser(credential.User.ID)
 	collection := database.CredentialCollection()
+	Logger.Info(cred.CredsID)
 	if sysAdmin || appUser.Role == "admin" || appUser.ID == credential.User.ID {
 		result, err := collection.DeleteOne(context.Background(), bson.M{"credsid": cred.CredsID})
 		if err != nil {
