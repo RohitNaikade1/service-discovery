@@ -36,24 +36,15 @@ func GetResourcesCount(Categories []models.Category_info) (count int) {
 func CronTask(credsid string) {
 	start := time.Now()
 	var wg = sync.WaitGroup{}
-
 	var r models.Registration
-
-	//fmt.Println(credsid)
-
 	collection := database.RegistrationCollection()
 	err := collection.FindOne(context.TODO(), bson.M{"accounts.credsid": credsid}).Decode(&r)
-
 	count := GetResourcesCount(r.Categories)
-
-	//	fmt.Println("Count: ", count)
-
 	wg.Add(count)
 	if err != nil {
 		Logger.Error(err.Error())
 	} else {
 		for i := 0; i < len(r.Categories); i++ {
-
 			for j := 0; j < len(r.Categories[i].Resource_info.Resources); j++ {
 				resource := r.Categories[i].Resource_info.Resources[j]
 				go GetResourceData(resource, credsid, &wg)
@@ -61,37 +52,29 @@ func CronTask(credsid string) {
 		}
 
 	}
-
 	wg.Wait()
 	elapsed := time.Since(start)
-
 	Logger.Info("Sync took " + elapsed.String())
-
 }
 
 func GetResourceData(resource string, credsid string, wg *sync.WaitGroup) {
 	port := env.GetEnvironmentVariable("PORT")
 	url := "http://localhost:" + port + "/servicediscovery/cloudresources/azure/service/" + resource + "?credsid=" + credsid
 	method := "GET"
-
 	client := &http.Client{}
-
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		Logger.Error(err.Error())
 	}
-
 	res, err := client.Do(req)
 	if err != nil {
 		Logger.Error(err.Error())
 	}
 	defer res.Body.Close()
-
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		Logger.Error(err.Error())
 	}
-
 	Logger.Info(string(body))
 	time.Sleep(time.Duration(10 * time.Millisecond))
 	wg.Done()
@@ -149,38 +132,28 @@ func SetJob(c *gin.Context) {
 	username := c.GetString("username")
 	password := c.GetString("password")
 	role := c.GetString("role")
-
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-
 	if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 		s1 = Set_DT{}
 		const DatelayOut = time.RFC3339
-
 		var iscred bool
 		cred := c.PostForm("credsid")
 		iscred = IsCred(cred)
-
 		//fmt.Println(iscred)
-
 		if iscred {
 			s2.credsid = c.PostForm("credsid")
 			if c.PostForm("Date_time") != "" {
 				//fmt.Println("date-time")
 				s1.ti = c.PostForm("Date_time")
-
 				timeStampString := s1.ti
-
 				timeStampDate, err := time.Parse(DatelayOut, timeStampString)
-
 				if err != nil {
 					Logger.Error(err.Error())
 					//os.Exit(1)
 				}
 				cnt++
-
 				tag := strconv.Itoa(cnt)
-
 				hr, min, sec := timeStampDate.Clock()
 				year, month, day := timeStampDate.Date()
 				s2 := Set_GT{
@@ -193,28 +166,21 @@ func SetJob(c *gin.Context) {
 					id:      cnt,
 					credsid: cred,
 				}
-
 				t := time.Date(s2.year, s2.month, s2.day, s2.hour, s2.min, s2.sec, 0, time.Now().Location())
-
 				j, _ := s.Every(1).Days().LimitRunsTo(1).At(t).Do(myTask)
 				j.Tag(tag)
-
 				Logger.Info("\nJob added, will run at:" + t.String())
 				Logger.Info("ID:" + tag)
 				c.JSON(http.StatusOK, bson.M{"Job added, it will run at": t, "ID": tag})
 				//	fmt.Println(s.Jobs())
-
 			} else if c.PostForm("Periodic_hr") != "" {
-
 				s1.ti = c.PostForm("Periodic_hr")
 				timeStampString := s1.ti
-
 				timeStampHour, err2 := time.Parse(time.Kitchen, timeStampString)
 				if err2 != nil {
 					fmt.Println(err2)
 					os.Exit(1)
 				}
-
 				cnt++
 				// var tag string
 				tag := strconv.Itoa(cnt)
@@ -362,10 +328,8 @@ func GetOSType(data interface{}) string {
 }
 
 func Collections(creds string) {
-
 	start := time.Now()
 	var wg = sync.WaitGroup{}
-
 	arr := database.ListCollectionNames()
 	//fmt.Println(len(arr))
 	wg.Add(len(arr))
@@ -373,7 +337,6 @@ func Collections(creds string) {
 		Logger.Info(arr[i])
 		go SyncResources(arr[i], creds, &wg)
 	}
-
 	wg.Wait()
 	elapsed := time.Since(start)
 	Logger.Info("Collections took " + elapsed.String())
@@ -386,7 +349,6 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 	if err != nil {
 		Logger.Error("failed to obtain a credential: " + err.Error())
 	}
-
 	client := armresources.NewResourcesClient(helpers.SubscriptionID(creds), cred, nil)
 	results := database.ReadAll(collection)
 	Logger.Info(collection + " Query Reult:")
@@ -401,7 +363,6 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 		status := doc["status"]
 		ID := fmt.Sprint(id)
 		//fmt.Println("ID: ", ID)
-
 		if status == "active" {
 			fmt.Println("Inside active")
 			if collection == "databases" || collection == "servers" {
@@ -413,7 +374,6 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 				Resp = resp
 				Err = err
 			}
-
 			if Err != nil {
 				Logger.Error("failed to obtain a response: " + err.Error())
 
@@ -434,7 +394,6 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 						Logger.Error(er.Error())
 					}
 				}
-
 				DeActive(string(res))
 				filter := bson.M{"name": n}
 				data := bson.M{"status": "inactive"}
@@ -442,20 +401,13 @@ func SyncResources(collection string, creds string, wg *sync.WaitGroup) {
 				database.Update(collection, filter, update)
 
 			}
-
-			out, err := json.Marshal(Resp)
-			if err != nil {
-				Logger.Error(err.Error())
-			}
-
+			response := helpers.Encode(Resp)
 			var d map[string]interface{}
-			json.Unmarshal(out, &d)
+			json.Unmarshal(response, &d)
 			filter := bson.M{"name": n}
 			update := bson.M{"$set": d}
 			database.Update(collection, filter, update)
 		}
-
 	}
-	//}
 	wg.Done()
 }

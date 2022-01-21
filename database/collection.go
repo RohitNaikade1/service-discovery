@@ -7,8 +7,7 @@ import (
 )
 
 func Database() (db string) {
-	//	db = os.Getenv("MONGO_DATABASE")
-	db = "service-discovery"
+	db = env.MONGODB_DATABASE
 	return db
 }
 

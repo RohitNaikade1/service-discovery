@@ -54,12 +54,10 @@ func ValidateToken(signedToken string) (claim *models.Claims, result string) {
 		log.Logger().Error(err.Error())
 		result = err.Error()
 	}
-
 	claims, ok := token.Claims.(*models.Claims)
 	if !ok {
 		result = "token is invalid"
 	}
-
 	if claims.ExpiresAt < time.Now().Unix() {
 		result = "token has expired"
 	}
