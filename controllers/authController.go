@@ -35,9 +35,11 @@ func Authenticate(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 			c.Abort()
 		} else {
+			c.Set("id", claims.ID)
 			c.Set("username", claims.Username)
 			c.Set("password", claims.Password)
 			c.Set("role", claims.Role)
+
 			c.Next()
 		}
 	}

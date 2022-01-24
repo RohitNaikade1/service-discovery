@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
 	"service-discovery/database"
 	"service-discovery/env"
@@ -89,18 +90,23 @@ func Login(c *gin.Context) {
 
 func GetUsers(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
+	id := c.GetString("id")
+	Logger.Info(id)
 	username, password, role := helpers.GetTokenValues(c)
+	Logger.Info("username: " + username + " password: " + password + " role: " + role)
 	var arr []string
 	if database.ValidateCollection(env.USER_COLLECTION) {
-		results := database.ReadAll(env.USER_COLLECTION)
-		for _, users := range results {
-			response := helpers.Encode(users)
-			arr = append(arr, string(response))
-		}
-		stringByte := "[" + strings.Join(arr, " ,") + "]"
 		sysAdmin := VerifyParentAdmin(username, password, role)
-		appUser := GetCurrentLoggedInUser(username, password, role)
+		appUser := GetLoggedInUser(id)
+		log.Println("SysAdmin: ", sysAdmin)
+		log.Println("appUser: ", appUser)
 		if sysAdmin || appUser.Role == "admin" {
+			results := database.ReadAll(env.USER_COLLECTION)
+			for _, users := range results {
+				response := helpers.Encode(users)
+				arr = append(arr, string(response))
+			}
+			stringByte := "[" + strings.Join(arr, " ,") + "]"
 			c.Data(http.StatusOK, "application/json", []byte(stringByte))
 		} else {
 			c.JSON(http.StatusUnauthorized, "Unauthorized")
@@ -117,7 +123,8 @@ func GetUser(c *gin.Context) {
 	var user models.User
 	id := c.Param("id")
 	sysAdmin := VerifyParentAdmin(username, password, role)
-	appUser := GetCurrentLoggedInUser(username, password, role)
+	//appUser := GetCurrentLoggedInUser(username, password, role)
+	appUser := GetLoggedInUser(id)
 	if sysAdmin || appUser.Role == "admin" || appUser.ID == id {
 		err := database.Read(env.USER_COLLECTION, bson.M{"_id": id}).Decode(&user)
 		helpers.PrintError(err)
@@ -131,8 +138,9 @@ func GetUser(c *gin.Context) {
 func UpdateUser(c *gin.Context) {
 	Logger.Debug("FUNCENTRY")
 	username, password, role := helpers.GetTokenValues(c)
+
 	var user models.User
-	user.ID = c.Param("id")
+	id := c.Param("id")
 	err := c.ShouldBind(&user)
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Invalid json provided"})
@@ -143,16 +151,17 @@ func UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 	user.Password = hashPassword
-	filter := bson.M{"_id": user.ID}
+	filter := bson.M{"_id": id}
 	sysAdmin := VerifyParentAdmin(username, password, role)
-	appUser := GetCurrentLoggedInUser(username, password, role)
+	//appUser := GetCurrentLoggedInUser(username, password, role)
+	appUser := GetLoggedInUser(id)
 	if sysAdmin || appUser.Role == "admin" {
 		update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
 		response := database.Update(env.USER_COLLECTION, filter, update)
 		c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": user})
 	} else {
-		if appUser.ID == user.ID {
-			update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": user.Password, "email": user.Email, "updated_at": time.Now().Local().String()}}
+		if appUser.ID == id {
+			update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
 			response := database.Update(env.USER_COLLECTION, filter, update)
 			c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": user})
 		} else {
@@ -167,7 +176,8 @@ func DeleteUser(c *gin.Context) {
 	username, password, role := helpers.GetTokenValues(c)
 	id := c.Param("id")
 	sysAdmin := VerifyParentAdmin(username, password, role)
-	appUser := GetCurrentLoggedInUser(username, password, role)
+	//appUser := GetCurrentLoggedInUser(username, password, role)
+	appUser := GetLoggedInUser(id)
 	if sysAdmin || appUser.Role == "admin" {
 		result := database.Delete(env.USER_COLLECTION, bson.M{"_id": id})
 		c.JSON(http.StatusOK, gin.H{"Deleted count": result.DeletedCount, "Deleted Count": result.DeletedCount})
