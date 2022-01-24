@@ -156,12 +156,12 @@ func UpdateUser(c *gin.Context) {
 	//appUser := GetCurrentLoggedInUser(username, password, role)
 	appUser := GetLoggedInUser(id)
 	if sysAdmin || appUser.Role == "admin" {
-		update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
+		update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": appUser.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
 		response := database.Update(env.USER_COLLECTION, filter, update)
 		c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": user})
 	} else {
 		if appUser.ID == id {
-			update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": user.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
+			update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "password": appUser.Password, "email": user.Email, "role": appUser.Role, "updated_at": time.Now().Local().String()}}
 			response := database.Update(env.USER_COLLECTION, filter, update)
 			c.JSON(http.StatusOK, gin.H{"Updated count": response.ModifiedCount, "Updated data": user})
 		} else {
