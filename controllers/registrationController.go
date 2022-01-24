@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"service-discovery/database"
 	"service-discovery/env"
@@ -15,35 +16,31 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegistrationExist(name string, creds string) bool {
-	var result bool
+func RegExist(name string, creds string) (result bool) {
+	Logger.Debug("FUNCENTRY")
 	var registration models.Registration
-	registration.Accounts.CredsId = creds
-	registration.Name = name
-	collection := database.RegistrationCollection()
-	err := collection.FindOne(context.TODO(), bson.M{"credsid": registration.Accounts.CredsId, "name": registration.Name}).Decode(&registration)
+	err := database.Read(env.REGISTRATION_COLLECTION, bson.M{"name": name, "accounts.credsid": creds}).Decode(&registration)
 	if err != nil {
-		result = true
-	} else {
 		result = false
+	} else {
+		result = true
 	}
+	Logger.Debug("FUNCEXIT")
 	return result
 }
 
 func GetRegistration(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	var registration models.Registration
 	id := c.Param("id")
-	collection := database.RegistrationCollection()
-	err := collection.FindOne(context.TODO(), bson.M{"_id": id}).Decode(&registration)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	}
 	if database.ValidateCollection(env.REGISTRATION_COLLECTION) {
 		if database.ValidateDocument(env.REGISTRATION_COLLECTION, bson.M{"_id": registration.ID}) {
 			if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
+				err := database.Read(env.REGISTRATION_COLLECTION, bson.M{"_id": id}).Decode(&registration)
+				helpers.PrintError(err)
 				c.JSON(http.StatusOK, registration)
 			} else {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -54,28 +51,32 @@ func GetRegistration(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusNotFound, gin.H{"status": "Data not found"})
 	}
+	Logger.Debug("FUNCEXIT")
 }
 
 func GetRegistrations(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	var arr []string
-	result := database.ReadAll(env.REGISTRATION_COLLECTION)
-	for _, data := range result {
-		response := helpers.Encode(data)
-		arr = append(arr, string(response))
-	}
-	stringByte := "[" + strings.Join(arr, " ,") + "]"
 	if sysAdmin || appUser.Role == "admin" {
+		result := database.ReadAll(env.REGISTRATION_COLLECTION)
+		for _, data := range result {
+			response := helpers.Encode(data)
+			arr = append(arr, string(response))
+		}
+		stringByte := "[" + strings.Join(arr, " ,") + "]"
 		c.Data(http.StatusOK, "application/json", []byte(stringByte))
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
+	Logger.Debug("FUNCEXIT")
 }
 
 //POST
 func CreateRegistration(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
@@ -87,22 +88,18 @@ func CreateRegistration(c *gin.Context) {
 	}
 	registration.Created_At = time.Now().Local().String()
 	registration.Updated_At = time.Now().Local().String()
-	collection := database.RegistrationCollection()
-	if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
-		if database.ValidateDocument(env.REGISTRATION_COLLECTION, bson.M{"credsid": registration.Accounts.CredsId, "name": registration.Name}) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "credsid or name used already"})
-		} else {
-			result, err := collection.InsertOne(context.Background(), registration)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			} else {
-				c.JSON(http.StatusOK, gin.H{"status": "inserted", "id": result.InsertedID})
-			}
-		}
+	fmt.Println(RegExist(registration.Name, registration.Accounts.CredsId))
+	if RegExist(registration.Name, registration.Accounts.CredsId) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "credsid or name used already"})
 	} else {
-		c.JSON(http.StatusUnauthorized, "unauthorized")
+		if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
+			result := database.Insert(env.REGISTRATION_COLLECTION, registration)
+			c.JSON(http.StatusOK, gin.H{"status": "inserted", "id": result.InsertedID})
+		} else {
+			c.JSON(http.StatusUnauthorized, "unauthorized")
+		}
 	}
-
+	Logger.Debug("FUNCEXIT")
 }
 
 //PUT
@@ -137,13 +134,8 @@ func DeleteRegistration(c *gin.Context) {
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	id := c.Param("id")
 	user := helpers.GetUserByCredsID(id)
-	collection := database.RegistrationCollection()
 	if sysAdmin || appUser.Role == "admin" || appUser.ID == user.ID {
-		result, err := collection.DeleteOne(context.Background(), bson.M{"_id": id})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			c.Abort()
-		}
+		result := database.Delete(env.REGISTRATION_COLLECTION, bson.M{"_id": id})
 		c.JSON(http.StatusOK, gin.H{"status": "Deleted", "Deleted Count": result.DeletedCount})
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
