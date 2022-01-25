@@ -10,9 +10,8 @@ import (
 )
 
 func AddSysID(data map[string]interface{}, id string) map[string]interface{} {
-
-	r := models.SysIDs{SysID: id, Status: "active"}
-	sysresponse, err := json.Marshal(r)
+	response := models.SysIDs{SysID: id, Status: "active"}
+	sysresponse, err := json.Marshal(response)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -21,7 +20,6 @@ func AddSysID(data map[string]interface{}, id string) map[string]interface{} {
 }
 
 func PostApi(body string) (sysid string) {
-
 	payload := strings.NewReader(body)
 	req, err := http.NewRequest(
 		http.MethodPost,
@@ -31,49 +29,39 @@ func PostApi(body string) (sysid string) {
 	if err != nil {
 		Logger.Error("Error creating http request: " + err.Error())
 	}
-
 	req.Header.Add("Authorization", "Basic YWRtaW46OHRsVE5wTlNzTTFy")
-
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		Logger.Error("Error sending http request: " + err.Error())
 	}
-
 	responseBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		Logger.Error("Error reading http response body: " + err.Error())
 	}
-
 	Logger.Info(string(responseBody))
 	Logger.Info(res.Status)
-
-	var s models.Results
-	json.Unmarshal(responseBody, &s)
-
-	return s.Result.SysID
+	var result models.Results
+	json.Unmarshal(responseBody, &result)
+	return result.Result.SysID
 }
 
 func DeActive(data string) {
 	payload := strings.NewReader(data)
 	url := "https://dev55842.service-now.com/api/631287/pocapi/deactive"
 	method := "POST"
-
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, payload)
-
 	if err != nil {
 		Logger.Error(err.Error())
 		return
 	}
 	req.Header.Add("Authorization", "Basic YWRtaW46OHRsVE5wTlNzTTFy")
-
 	res, err := client.Do(req)
 	if err != nil {
 		Logger.Error(err.Error())
 		return
 	}
 	defer res.Body.Close()
-
 	responseBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		Logger.Error(err.Error())

@@ -37,7 +37,7 @@ func GetRegistration(c *gin.Context) {
 	var registration models.Registration
 	id := c.Param("id")
 	if database.ValidateCollection(env.REGISTRATION_COLLECTION) {
-		if database.ValidateDocument(env.REGISTRATION_COLLECTION, bson.M{"_id": registration.ID}) {
+		if database.ValidateDocument(env.REGISTRATION_COLLECTION, bson.M{"_id": id}) {
 			if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 				err := database.Read(env.REGISTRATION_COLLECTION, bson.M{"_id": id}).Decode(&registration)
 				helpers.PrintError(err)

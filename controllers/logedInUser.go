@@ -12,7 +12,8 @@ import (
 
 func GetCurrentLoggedInUser(username string, password string, role string) (user models.User) {
 	collection := database.UserCollection()
-	collection.FindOne(context.Background(), bson.M{"username": username, "password": password, "role": role}).Decode(&user)
+	err := collection.FindOne(context.Background(), bson.M{"username": username, "password": password, "role": role}).Decode(&user)
+	helpers.PrintError(err)
 	return user
 }
 
@@ -22,6 +23,7 @@ func GetLoggedInUser(id string) (user models.User) {
 	helpers.PrintError(err)
 	return user
 }
+
 func VerifyParentAdmin(username string, password string, role string) (result bool) {
 	if username == env.ADMIN_USERNAME && password == env.ADMIN_PASSWORD && role == "admin" {
 		result = true

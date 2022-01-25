@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"service-discovery/database"
@@ -123,8 +124,7 @@ func GetUser(c *gin.Context) {
 	var user models.User
 	id := c.Param("id")
 	sysAdmin := VerifyParentAdmin(username, password, role)
-	//appUser := GetCurrentLoggedInUser(username, password, role)
-	appUser := GetLoggedInUser(id)
+	appUser := GetCurrentLoggedInUser(username, password, role)
 	if sysAdmin || appUser.Role == "admin" || appUser.ID == id {
 		err := database.Read(env.USER_COLLECTION, bson.M{"_id": id}).Decode(&user)
 		helpers.PrintError(err)
@@ -176,8 +176,11 @@ func DeleteUser(c *gin.Context) {
 	username, password, role := helpers.GetTokenValues(c)
 	id := c.Param("id")
 	sysAdmin := VerifyParentAdmin(username, password, role)
-	//appUser := GetCurrentLoggedInUser(username, password, role)
-	appUser := GetLoggedInUser(id)
+	appUser := GetCurrentLoggedInUser(username, password, role)
+	Logger.Info("username: " + username + " password: " + password + " role: " + role)
+	//appUser := GetLoggedInUser(id)
+	fmt.Println(sysAdmin)
+	fmt.Println(appUser)
 	if sysAdmin || appUser.Role == "admin" {
 		result := database.Delete(env.USER_COLLECTION, bson.M{"_id": id})
 		c.JSON(http.StatusOK, gin.H{"Deleted count": result.DeletedCount, "Deleted Count": result.DeletedCount})

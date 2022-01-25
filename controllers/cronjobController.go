@@ -25,7 +25,6 @@ import (
 func GetResourcesCount(Categories []models.Category_info) (count int) {
 	count = 0
 	for i := 0; i < len(Categories); i++ {
-
 		for j := 0; j < len(Categories[i].Resource_info.Resources); j++ {
 			count++
 		}
