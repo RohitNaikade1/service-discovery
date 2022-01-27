@@ -128,10 +128,11 @@ func UpdateRegistration(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
-	Logger.Debug("FUNCENTRY")
+	Logger.Debug("FUNCEXIT")
 }
 
 func DeleteRegistration(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
@@ -143,4 +144,5 @@ func DeleteRegistration(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
+	Logger.Debug("FUNCEXIT")
 }

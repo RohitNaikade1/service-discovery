@@ -1,8 +1,8 @@
 package helpers
 
 import (
-	"context"
 	"service-discovery/database"
+	"service-discovery/env"
 	"service-discovery/middlewares"
 	"service-discovery/models"
 
@@ -23,66 +23,23 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func ValidateUser(username string, password string, role string, user models.User) (result bool) {
-	if username == user.UserName && password == user.Password && role == "admin" {
-		result = true
-	} else if username == user.UserName && password == user.Password && role == user.Role {
-		result = true
-	} else {
-		result = false
-	}
-	return result
-}
-
-func ValidateRole(role string) (result bool) {
-	if role == "admin" {
-		result = true
-	} else {
-		result = false
-	}
-	return result
-}
-
 func GetUser(userId string) (user models.User) {
-	col := database.UserCollection()
-	err := col.FindOne(context.TODO(), bson.M{"_id": userId}).Decode(&user)
-	if err != nil {
-		Logger.Error(err.Error())
-	}
+	Logger.Debug("FUNCENTRY")
+	err := database.Read(env.USER_COLLECTION, bson.M{"_id": userId}).Decode(&user)
+	PrintError(err)
+	Logger.Debug("FUNCEXIT")
 	return user
 }
 
 func GetUserByCredsID(credsid string) (user models.User) {
+	Logger.Debug("FUNCENTRY")
 	var cred models.Credentials
-	collection := database.CredentialCollection()
-	collection.FindOne(context.Background(), bson.M{"credsid": credsid}).Decode(&cred)
+	err := database.Read(env.CREDENTIAL_COLLECTION, bson.M{"credsid": credsid}).Decode(&cred)
+	PrintError(err)
 	userId := cred.User.ID
 	user = GetUser(userId)
+	Logger.Debug("FUNCEXIT")
 	return user
-}
-
-func VerifyAdmin(role string, username string, password string) (result bool) {
-	var user models.User
-	collection := database.UserCollection()
-	collection.FindOne(context.Background(), bson.M{"username": username}).Decode(&user)
-	if username == user.UserName && password == user.Password && role == "admin" && user.Role == "admin" {
-		result = true
-	} else {
-		result = false
-	}
-	return result
-}
-
-func VerifyUser(role string, username string, password string) (result bool) {
-	var user models.User
-	collection := database.UserCollection()
-	collection.FindOne(context.Background(), bson.M{"username": username}).Decode(&user)
-	if username == user.UserName && password == user.Password && user.Role == role {
-		result = true
-	} else {
-		result = false
-	}
-	return result
 }
 
 func GetTokenValues(c *gin.Context) (username string, password string, role string) {

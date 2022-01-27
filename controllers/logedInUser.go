@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"service-discovery/database"
 	"service-discovery/env"
 	"service-discovery/helpers"
@@ -12,8 +11,7 @@ import (
 
 func GetCurrentLoggedInUser(username string, password string, role string) (user models.User) {
 	Logger.Debug("FUNCENTRY")
-	collection := database.UserCollection()
-	err := collection.FindOne(context.Background(), bson.M{"username": username, "password": password, "role": role}).Decode(&user)
+	err := database.Read(env.USER_COLLECTION, bson.M{"username": username, "password": password, "role": role}).Decode(&user)
 	helpers.PrintError(err)
 	Logger.Debug("FUNCEXIT")
 	return user
@@ -21,8 +19,7 @@ func GetCurrentLoggedInUser(username string, password string, role string) (user
 
 func GetLoggedInUser(id string) (user models.User) {
 	Logger.Debug("FUNCENTRY")
-	collection := database.UserCollection()
-	err := collection.FindOne(context.Background(), bson.M{"_id": id}).Decode(&user)
+	err := database.Read(env.USER_COLLECTION, bson.M{"_id": id}).Decode(&user)
 	helpers.PrintError(err)
 	Logger.Debug("FUNCEXIT")
 	return user

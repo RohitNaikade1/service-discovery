@@ -156,6 +156,22 @@ func ReadAll(collection string) (arr []primitive.M) {
 	return results
 }
 
+func ReadData(collection string, filter primitive.M) (arr []primitive.M) {
+	Logger.Debug("FUNCENTRY")
+	mongoCollection := Client.Database(env.MONGODB_DATABASE).Collection(collection)
+	cursor, err := mongoCollection.Find(context.Background(), filter)
+	if err != nil {
+		Logger.Error(err.Error())
+	}
+	var results []bson.M
+	err = cursor.All(context.Background(), &results)
+	if err != nil {
+		Logger.Error(err.Error())
+	}
+	Logger.Debug("FUNCEXIT")
+	return results
+}
+
 func InsertOrUpdate(collection string, filter primitive.M, update primitive.M) (response interface{}) {
 	Logger.Debug("FUNCENTRY")
 	if ValidateDocument(collection, filter) {

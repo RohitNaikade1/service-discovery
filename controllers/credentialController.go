@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"service-discovery/database"
 	"service-discovery/env"
@@ -26,7 +27,7 @@ func GetAllCredentials(c *gin.Context) {
 	stringByte := "[" + strings.Join(arr, " ,") + "]"
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
-	if sysAdmin || appUser.Role == "admin" {
+	if sysAdmin || appUser.Role == "admin" || appUser.Role == "user" {
 		c.Data(http.StatusOK, "application/json", []byte(stringByte))
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -136,8 +137,8 @@ func DeleteCredentials(c *gin.Context) {
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
 	credentials := helpers.GetCredentialData(id)
-	user := helpers.GetUser(credentials.User.ID)
-	if sysAdmin || appUser.Role == "admin" || appUser.Role == user.Role {
+	user := helpers.GetUserByCredsID(credentials.CredsID)
+	if sysAdmin || appUser.Role == "admin" || appUser.ID == user.ID {
 		Logger.Info("ID: " + credentials.ID + " CredsID: " + credentials.CredsID)
 		result := database.Delete(env.CREDENTIAL_COLLECTION, bson.M{"_id": id})
 		c.JSON(http.StatusOK, gin.H{"Deleted Count": result.DeletedCount, "Data": credentials})
@@ -145,5 +146,23 @@ func DeleteCredentials(c *gin.Context) {
 		Logger.Info("Not authorized")
 		c.JSON(http.StatusUnauthorized, "Unauthorized")
 	}
+	Logger.Debug("FUNCEXIT")
+}
+
+func GetUserCredentials(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
+	var arr []string
+	username, password, role := helpers.GetTokenValues(c)
+	appUser := GetCurrentLoggedInUser(username, password, role)
+	fmt.Println(appUser)
+	result := database.ReadData(env.CREDENTIAL_COLLECTION, bson.M{"user.id": appUser.ID})
+
+	for _, creds := range result {
+		response := helpers.Encode(creds)
+		arr = append(arr, string(response))
+	}
+	stringByte := "[" + strings.Join(arr, " ,") + "]"
+	fmt.Println(stringByte)
+	c.Data(http.StatusOK, "application/json", []byte(stringByte))
 	Logger.Debug("FUNCEXIT")
 }

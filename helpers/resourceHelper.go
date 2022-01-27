@@ -22,17 +22,11 @@ func ValidateResource(resourceType string) (result bool, arr []string) {
 	if err != nil {
 		Logger.Error(err.Error())
 	}
-
 	Logger.Info("Successfully Opened users.json")
-
 	defer jsonFile.Close()
-
 	byteValue, _ := ioutil.ReadAll(jsonFile)
-
 	var resources models.Resources
-
 	json.Unmarshal(byteValue, &resources)
-
 	result = Contains(resources.Resource, resourceType)
 	return result, resources.Resource
 }

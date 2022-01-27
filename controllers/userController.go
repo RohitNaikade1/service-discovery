@@ -98,7 +98,7 @@ func GetUsers(c *gin.Context) {
 	var arr []string
 	if database.ValidateCollection(env.USER_COLLECTION) {
 		sysAdmin := VerifyParentAdmin(username, password, role)
-		appUser := GetLoggedInUser(id)
+		appUser := GetCurrentLoggedInUser(username, password, role)
 		log.Println("SysAdmin: ", sysAdmin)
 		log.Println("appUser: ", appUser)
 		if sysAdmin || appUser.Role == "admin" {
@@ -153,8 +153,8 @@ func UpdateUser(c *gin.Context) {
 	user.Password = hashPassword
 	filter := bson.M{"_id": id}
 	sysAdmin := VerifyParentAdmin(username, password, role)
-	//appUser := GetCurrentLoggedInUser(username, password, role)
-	appUser := GetLoggedInUser(id)
+	appUser := GetCurrentLoggedInUser(username, password, role)
+	//appUser := GetLoggedInUser(id)
 	if sysAdmin || appUser.Role == "admin" {
 		update := bson.M{"$set": bson.M{"firstname": user.FirstName, "lastname": user.LastName, "username": user.UserName, "password": appUser.Password, "email": user.Email, "role": user.Role, "updated_at": time.Now().Local().String()}}
 		response := database.Update(env.USER_COLLECTION, filter, update)
