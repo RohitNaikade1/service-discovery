@@ -116,12 +116,15 @@ func UpdateRegistration(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
+	registration.Updated_At = time.Now().Local().String()
 	filter := bson.M{"_id": registration.ID}
 	update := bson.M{"$set": registration}
-	//user := helpers.GetUserByCredsID(registration.Accounts.CredsId)
-	if sysAdmin || appUser.Role == "admin" {
+	user := helpers.GetUserByCredsID(registration.Accounts.CredsId)
+	fmt.Println(appUser.ID)
+	fmt.Println(user.ID)
+	if sysAdmin || appUser.Role == "admin" || appUser.ID == user.ID {
 		response := database.Update(env.REGISTRATION_COLLECTION, filter, update)
-		c.JSON(http.StatusOK, gin.H{"Updated ID": response.UpsertedID, "Data": registration})
+		c.JSON(http.StatusOK, gin.H{"Matched ": response.MatchedCount, "Updated ": response.ModifiedCount, "Upsert ": response.UpsertedCount, "Upserted ID": response.UpsertedID, "Data": registration})
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
