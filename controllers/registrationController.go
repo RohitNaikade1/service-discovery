@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"service-discovery/database"
@@ -104,28 +103,29 @@ func CreateRegistration(c *gin.Context) {
 
 //PUT
 func UpdateRegistration(c *gin.Context) {
+	Logger.Debug("FUNCENTRY")
 	username, password, role := helpers.GetTokenValues(c)
 	sysAdmin := VerifyParentAdmin(username, password, role)
 	appUser := GetCurrentLoggedInUser(username, password, role)
+	fmt.Println(sysAdmin)
+	fmt.Println(appUser)
 	var registration models.Registration
-	registration.ID = c.Param("id")
+	id := c.Param("id")
+	registration.ID = id
 	err := c.ShouldBind(&registration)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 	filter := bson.M{"_id": registration.ID}
 	update := bson.M{"$set": registration}
-	user := helpers.GetUserByCredsID(registration.Accounts.CredsId)
-	collection := database.RegistrationCollection()
-	if sysAdmin || appUser.Role == "admin" || appUser.ID == user.ID {
-		response, err := collection.UpdateOne(context.Background(), filter, update)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		}
+	//user := helpers.GetUserByCredsID(registration.Accounts.CredsId)
+	if sysAdmin || appUser.Role == "admin" {
+		response := database.Update(env.REGISTRATION_COLLECTION, filter, update)
 		c.JSON(http.StatusOK, gin.H{"Updated ID": response.UpsertedID, "Data": registration})
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
+	Logger.Debug("FUNCENTRY")
 }
 
 func DeleteRegistration(c *gin.Context) {
